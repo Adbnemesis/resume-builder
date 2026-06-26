@@ -1,0 +1,43 @@
+# Personal Data (Resume details & search results)
+editable_resume/local_resume_data.json
+job_results.md
+
+# Local environment & secret files
+.env
+.env.local
+.env.*.local
+*.env
+*.pem
+*.key
+*.token
+credentials.json
+secrets.json
+
+# IDE / Editor configuration
+.vscode/
+.idea/
+*.suo
+*.ntvs*
+*.njsproj
+*.sln
+*.swp
+.DS_Store
+Thumbs.db
+
+# Output & temporary cache folders
+tmp/
+output/
+.agents/
+.gemini/
+
+# Python caching & environments
+__pycache__/
+*.pyc
+*.pyo
+*.pyd
+.env/
+env/
+venv/
+.venv/
+pip-log.txt
+pip-delete-this-directory.txt

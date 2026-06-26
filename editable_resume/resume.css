@@ -1,0 +1,286 @@
+/* Resume Templates & Formatting Stylesheet */
+
+/* Font Family Classes */
+.font-inter {
+  font-family: 'Inter', sans-serif;
+}
+.font-outfit {
+  font-family: 'Outfit', sans-serif;
+}
+.font-roboto {
+  font-family: 'Roboto', sans-serif;
+}
+.font-playfair {
+  font-family: 'Playfair Display', serif;
+}
+.font-playfair p, 
+.font-playfair li, 
+.font-playfair span {
+  font-family: 'Roboto', sans-serif; /* Keep body text clean */
+}
+.font-fira {
+  font-family: 'Fira Code', monospace;
+}
+
+/* Resume Core Elements */
+#resumePaper {
+  display: flex;
+  flex-direction: column;
+  box-sizing: border-box;
+}
+
+.resume-header {
+  margin-bottom: calc(var(--section-spacing, 15px) * 1.2);
+  text-align: center;
+}
+
+.resume-header h1 {
+  font-size: 2.2rem;
+  font-weight: 700;
+  letter-spacing: -0.5px;
+  margin-bottom: 6px;
+  color: #0f172a;
+}
+
+.resume-header .location {
+  font-size: 0.95rem;
+  color: #475569;
+  margin-bottom: 8px;
+}
+
+.resume-contact-row {
+  display: flex;
+  justify-content: center;
+  align-items: center;
+  flex-wrap: wrap;
+  gap: 12px;
+  font-size: 0.8rem;
+  color: #475569;
+}
+
+.resume-contact-item {
+  display: flex;
+  align-items: center;
+  gap: 4px;
+  text-decoration: none;
+  color: #475569;
+  transition: color 0.2s ease;
+}
+
+.resume-contact-item:hover {
+  color: var(--accent-color);
+}
+
+.resume-contact-item i {
+  color: var(--accent-color);
+  font-size: 0.85rem;
+}
+
+/* Sections Styling */
+.resume-section {
+  margin-bottom: var(--section-spacing, 15px);
+}
+
+.resume-section-title {
+  font-size: 1rem;
+  font-weight: 700;
+  letter-spacing: 1px;
+  text-transform: uppercase;
+  color: var(--accent-color);
+  margin-bottom: 8px;
+  border-bottom: 1px solid #cbd5e1;
+  padding-bottom: 4px;
+}
+
+/* Common Layout Lists */
+.resume-item {
+  margin-bottom: 10px;
+}
+.resume-item:last-child {
+  margin-bottom: 0;
+}
+
+.resume-item-header {
+  display: flex;
+  justify-content: space-between;
+  align-items: baseline;
+  font-weight: 600;
+  color: #0f172a;
+  font-size: 0.95rem;
+}
+
+.resume-item-title {
+  font-weight: 700;
+}
+
+.resume-item-subtitle {
+  display: flex;
+  justify-content: space-between;
+  align-items: baseline;
+  font-size: 0.85rem;
+  font-style: italic;
+  color: #475569;
+  margin-top: 2px;
+  margin-bottom: 4px;
+}
+
+.resume-item-description {
+  font-size: 0.85rem;
+  line-height: var(--line-height, 1.3);
+  color: #334155;
+  text-align: justify;
+}
+
+/* Bullet Points Lists */
+.resume-highlights {
+  margin-top: 4px;
+  padding-left: 16px;
+  list-style-type: disc;
+}
+
+.resume-highlights li {
+  font-size: 0.85rem;
+  line-height: var(--line-height, 1.3);
+  color: #334155;
+  margin-bottom: 2px;
+  text-align: justify;
+}
+
+.resume-highlights li:last-child {
+  margin-bottom: 0;
+}
+
+/* Skills Formatting */
+.skills-text-container {
+  font-size: 0.85rem;
+  line-height: 1.4;
+  color: #334155;
+}
+
+.skills-category {
+  margin-bottom: 4px;
+}
+
+.skills-category strong {
+  color: #0f172a;
+}
+
+/* Extracurricular styling */
+.extras-list {
+  display: flex;
+  flex-direction: column;
+  gap: 4px;
+}
+
+.extras-item {
+  font-size: 0.85rem;
+  line-height: var(--line-height, 1.3);
+  color: #334155;
+}
+
+.extras-item strong {
+  color: #0f172a;
+}
+
+/* Certifications Layout */
+.certs-grid {
+  display: grid;
+  grid-template-columns: 1fr 1fr;
+  gap: 6px;
+  font-size: 0.85rem;
+  color: #334155;
+}
+
+.certs-bullet-list {
+  display: flex;
+  flex-direction: column;
+  gap: 4px;
+  padding-left: 16px;
+  list-style-type: square;
+}
+
+.certs-bullet-list li {
+  font-size: 0.85rem;
+  line-height: var(--line-height, 1.3);
+  color: #334155;
+}
+
+
+/* ==========================================================================
+   TEMPLATE VARIATIONS
+   ========================================================================== */
+
+/* 1. MODERN MINIMALIST (Clean lines, modern structure) */
+.template-modern .resume-section-title {
+  border-bottom: 2px solid var(--accent-color);
+  padding-bottom: 3px;
+}
+
+.template-modern .resume-header h1 {
+  letter-spacing: -1px;
+}
+
+/* 2. EXECUTIVE ELEGANCE (Centered titles, Traditional Serif details) */
+.template-executive .resume-header {
+  border-bottom: 1px double #94a3b8;
+  padding-bottom: 12px;
+  margin-bottom: var(--section-spacing, 15px);
+}
+
+.template-executive .resume-section-title {
+  text-align: center;
+  border-bottom: none;
+  border-top: 1px solid #cbd5e1;
+  border-bottom: 1px solid #cbd5e1;
+  padding: 3px 0;
+  margin-bottom: 10px;
+  letter-spacing: 2px;
+}
+
+.template-executive .resume-item-header {
+  font-size: 0.9rem;
+}
+
+.template-executive .resume-highlights {
+  padding-left: 20px;
+}
+
+/* 3. TECH FOCUS (Highly Structured, Compact, Badge skills) */
+.template-tech .resume-section-title {
+  border-bottom: 1px dashed var(--accent-color);
+  padding-bottom: 2px;
+  display: inline-block;
+  width: 100%;
+}
+
+.template-tech .resume-item-header {
+  font-family: 'Fira Code', monospace;
+  font-size: 0.85rem;
+}
+
+.template-tech .resume-highlights {
+  list-style-type: square;
+}
+
+.template-tech .skills-badge-list {
+  display: flex;
+  flex-wrap: wrap;
+  gap: 6px;
+  margin-top: 4px;
+}
+
+.template-tech .skill-badge {
+  background-color: rgba(var(--accent-color-rgb), 0.08);
+  border: 1px solid rgba(var(--accent-color-rgb), 0.2);
+  color: var(--accent-color);
+  padding: 2px 8px;
+  border-radius: 4px;
+  font-family: 'Fira Code', monospace;
+  font-size: 0.75rem;
+  font-weight: 500;
+}
+
+.template-tech .certs-grid {
+  grid-template-columns: 1fr;
+  gap: 4px;
+}

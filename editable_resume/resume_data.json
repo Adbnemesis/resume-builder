@@ -1,0 +1,87 @@
+{
+  "personal": {
+    "name": "YOUR NAME",
+    "location": "City, State",
+    "phone": "+91 0000000000",
+    "email": "your.email@example.com",
+    "linkedin": {
+      "username": "LinkedInProfile",
+      "url": "https://linkedin.com/in/yourprofile"
+    },
+    "github": {
+      "username": "GitHubProfile",
+      "url": "https://github.com/yourprofile"
+    },
+    "leetcode": {
+      "username": "LeetCodeProfile",
+      "url": "https://leetcode.com/yourprofile"
+    },
+    "hackerrank": {
+      "username": "HackerRankProfile",
+      "url": "https://hackerrank.com/yourprofile"
+    }
+  },
+  "education": [
+    {
+      "institution": "Your University Name",
+      "degree": "Degree and Branch (e.g. B.Tech Computer Science) - CGPA - 9.00",
+      "duration": "08 2020 – 05 2024",
+      "location": "City, State, Country"
+    },
+    {
+      "institution": "Your School Name",
+      "degree": "12th CBSE Board - Percentage - 95%",
+      "duration": "05 2019 – 04 2020",
+      "location": "City, State, Country"
+    }
+  ],
+  "skills": {
+    "coursework": [
+      "Data Structures and Algorithms",
+      "Operating Systems",
+      "Object Oriented Programming",
+      "Database Systems"
+    ],
+    "languagesFrameworks": [
+      "C++",
+      "Java",
+      "Python",
+      "HTML",
+      "CSS",
+      "JavaScript",
+      "React",
+      "NodeJS",
+      "SQL",
+      "Docker"
+    ]
+  },
+  "projects": [
+    {
+      "name": "Your Project Title",
+      "description": "Describe your project key achievements, tech stack used, and key features. E.g. Built a responsive web app using React and NodeJS."
+    }
+  ],
+  "experience": [
+    {
+      "company": "Your Company Name",
+      "role": "Software Developer Intern",
+      "duration": "01 2024 – 06 2024",
+      "location": "City, State",
+      "highlights": [
+        "Detail your primary job roles and responsibilities.",
+        "Include metrics if possible: e.g. Reduced processing latencies by 30% using multi-threading in C++.",
+        "Discuss team collaboration and tool integrations."
+      ]
+    }
+  ],
+  "extracurricular": [
+    {
+      "title": "Hackathon / Competition Name",
+      "description": "Secured 1st/2nd/3rd rank in hackathons or coding contests."
+    }
+  ],
+  "certifications": [
+    "Web Development Bootcamp",
+    "Cloud Practitioner Certificate"
+  ]
+}

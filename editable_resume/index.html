@@ -1,0 +1,324 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+  <meta charset="UTF-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1.0">
+  <title>Anubhav Talus - Interactive Resume Builder</title>
+  
+  <!-- Google Fonts -->
+  <link rel="preconnect" href="https://fonts.googleapis.com">
+  <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+  <link href="https://fonts.googleapis.com/css2?family=Fira+Code:wght@400;500&family=Inter:wght@300;400;500;600;700&family=Outfit:wght@300;400;500;600;700&family=Playfair+Display:ital,wght@0,400;0,600;0,700;1,400&family=Roboto:wght@300;400;500;700&display=swap" rel="stylesheet">
+  
+  <!-- FontAwesome for Premium Icons -->
+  <link rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/6.4.0/css/all.min.css">
+  
+  <!-- Custom Stylesheets -->
+  <link rel="stylesheet" href="style.css">
+  <link rel="stylesheet" href="resume.css">
+</head>
+<body>
+  <div class="app-container">
+    
+    <!-- Left Editor Sidebar -->
+    <aside class="editor-sidebar" id="editorSidebar">
+      <header class="editor-header">
+        <div class="logo">
+          <i class="fa-solid fa-file-invoice"></i>
+          <h1>Resume Editor</h1>
+        </div>
+        <div class="action-buttons">
+          <button id="btnPrint" class="btn btn-primary" title="Print or Save as PDF">
+            <i class="fa-solid fa-print"></i> <span>PDF</span>
+          </button>
+          <button id="btnExport" class="btn btn-secondary" title="Export as JSON file">
+            <i class="fa-solid fa-download"></i> <span>Export</span>
+          </button>
+          <button id="btnImportTrigger" class="btn btn-secondary" title="Import from JSON file">
+            <i class="fa-solid fa-upload"></i> <span>Import</span>
+          </button>
+          <input type="file" id="fileImport" accept=".json" style="display: none;">
+          <button id="btnReset" class="btn btn-danger" title="Reset to default data">
+            <i class="fa-solid fa-arrow-rotate-left"></i> <span>Reset</span>
+          </button>
+        </div>
+      </header>
+
+      <!-- Section Navigation Tabs -->
+      <nav class="editor-tabs">
+        <button class="tab-btn active" data-tab="personal"><i class="fa-solid fa-user"></i> Personal</button>
+        <button class="tab-btn" data-tab="education"><i class="fa-solid fa-graduation-cap"></i> Education</button>
+        <button class="tab-btn" data-tab="experience"><i class="fa-solid fa-briefcase"></i> Experience</button>
+        <button class="tab-btn" data-tab="projects"><i class="fa-solid fa-laptop-code"></i> Projects</button>
+        <button class="tab-btn" data-tab="skills"><i class="fa-solid fa-screwdriver-wrench"></i> Skills</button>
+        <button class="tab-btn" data-tab="extracurricular"><i class="fa-solid fa-award"></i> Extras</button>
+        <button class="tab-btn" data-tab="certifications"><i class="fa-solid fa-certificate"></i> Certs</button>
+        <button class="tab-btn" data-tab="styling"><i class="fa-solid fa-wand-magic-sparkles"></i> Theme</button>
+      </nav>
+
+      <!-- Editor Panel Content Area -->
+      <main class="editor-panels">
+        
+        <!-- PERSONAL PANEL -->
+        <section class="tab-panel active" id="panel-personal">
+          <h2>Personal Details</h2>
+          <div class="form-grid">
+            <div class="form-group col-span-2">
+              <label for="inputName">Full Name</label>
+              <input type="text" id="inputName" placeholder="John Doe">
+            </div>
+            <div class="form-group">
+              <label for="inputEmail">Email Address</label>
+              <input type="email" id="inputEmail" placeholder="email@domain.com">
+            </div>
+            <div class="form-group">
+              <label for="inputPhone">Phone Number</label>
+              <input type="text" id="inputPhone" placeholder="+91 1234567890">
+            </div>
+            <div class="form-group col-span-2">
+              <label for="inputLocation">Location</label>
+              <input type="text" id="inputLocation" placeholder="Gurugram, Haryana, India">
+            </div>
+            
+            <h3 class="col-span-2 section-subheading">Social Profiles & Portfolios</h3>
+            
+            <div class="form-group">
+              <label for="inputLinkedinUsername"><i class="fa-brands fa-linkedin"></i> LinkedIn Label</label>
+              <input type="text" id="inputLinkedinUsername" placeholder="Username">
+            </div>
+            <div class="form-group">
+              <label for="inputLinkedinUrl">LinkedIn URL</label>
+              <input type="url" id="inputLinkedinUrl" placeholder="https://linkedin.com/in/username">
+            </div>
+            
+            <div class="form-group">
+              <label for="inputGithubUsername"><i class="fa-brands fa-github"></i> GitHub Label</label>
+              <input type="text" id="inputGithubUsername" placeholder="Username">
+            </div>
+            <div class="form-group">
+              <label for="inputGithubUrl">GitHub URL</label>
+              <input type="url" id="inputGithubUrl" placeholder="https://github.com/username">
+            </div>
+
+            <div class="form-group">
+              <label for="inputLeetcodeUsername"><i class="fa-code"></i> LeetCode Label</label>
+              <input type="text" id="inputLeetcodeUsername" placeholder="Username">
+            </div>
+            <div class="form-group">
+              <label for="inputLeetcodeUrl">LeetCode URL</label>
+              <input type="url" id="inputLeetcodeUrl" placeholder="https://leetcode.com/username">
+            </div>
+
+            <div class="form-group">
+              <label for="inputHackerrankUsername"><i class="fa-solid fa-square-poll-vertical"></i> HackerRank/Earth</label>
+              <input type="text" id="inputHackerrankUsername" placeholder="Username">
+            </div>
+            <div class="form-group">
+              <label for="inputHackerrankUrl">URL</label>
+              <input type="url" id="inputHackerrankUrl" placeholder="https://hackerrank.com/username">
+            </div>
+          </div>
+        </section>
+
+        <!-- EDUCATION PANEL -->
+        <section class="tab-panel" id="panel-education">
+          <div class="panel-header-action">
+            <h2>Education</h2>
+            <button class="btn btn-small btn-secondary" id="btnAddEducation"><i class="fa-solid fa-plus"></i> Add</button>
+          </div>
+          <div class="list-container" id="educationList">
+            <!-- Dynamic elements generated by script.js -->
+          </div>
+        </section>
+
+        <!-- EXPERIENCE PANEL -->
+        <section class="tab-panel" id="panel-experience">
+          <div class="panel-header-action">
+            <h2>Work Experience</h2>
+            <button class="btn btn-small btn-secondary" id="btnAddExperience"><i class="fa-solid fa-plus"></i> Add</button>
+          </div>
+          <div class="list-container" id="experienceList">
+            <!-- Dynamic elements generated by script.js -->
+          </div>
+        </section>
+
+        <!-- PROJECTS PANEL -->
+        <section class="tab-panel" id="panel-projects">
+          <div class="panel-header-action">
+            <h2>Projects</h2>
+            <button class="btn btn-small btn-secondary" id="btnAddProject"><i class="fa-solid fa-plus"></i> Add</button>
+          </div>
+          <div class="list-container" id="projectsList">
+            <!-- Dynamic elements generated by script.js -->
+          </div>
+        </section>
+
+        <!-- SKILLS PANEL -->
+        <section class="tab-panel" id="panel-skills">
+          <h2>Skills</h2>
+          <div class="form-grid">
+            <div class="form-group col-span-2">
+              <label for="inputCoursework">Coursework (Comma Separated)</label>
+              <textarea id="inputCoursework" rows="3" placeholder="Data Structures, Operating Systems, ..."></textarea>
+            </div>
+            <div class="form-group col-span-2">
+              <label for="inputLanguagesFrameworks">Languages & Frameworks (Comma Separated)</label>
+              <textarea id="inputLanguagesFrameworks" rows="4" placeholder="C++, Java, React, NodeJS, ..."></textarea>
+            </div>
+          </div>
+        </section>
+
+        <!-- EXTRACURRICULAR PANEL -->
+        <section class="tab-panel" id="panel-extracurricular">
+          <div class="panel-header-action">
+            <h2>Extracurriculars</h2>
+            <button class="btn btn-small btn-secondary" id="btnAddExtracurricular"><i class="fa-solid fa-plus"></i> Add</button>
+          </div>
+          <div class="list-container" id="extracurricularList">
+            <!-- Dynamic elements generated by script.js -->
+          </div>
+        </section>
+
+        <!-- CERTIFICATIONS PANEL -->
+        <section class="tab-panel" id="panel-certifications">
+          <div class="panel-header-action">
+            <h2>Certifications</h2>
+            <button class="btn btn-small btn-secondary" id="btnAddCertification"><i class="fa-solid fa-plus"></i> Add</button>
+          </div>
+          <div class="list-container" id="certificationsList">
+            <!-- Dynamic elements generated by script.js -->
+          </div>
+        </section>
+
+        <!-- STYLING PANEL -->
+        <section class="tab-panel" id="panel-styling">
+          <h2>Design & Layout Settings</h2>
+          
+          <div class="styling-section">
+            <h3>Theme Template</h3>
+            <div class="template-selector">
+              <label class="template-card">
+                <input type="radio" name="layoutTemplate" value="modern" checked>
+                <div class="card-content">
+                  <span class="title">Modern Minimalist</span>
+                  <span class="desc">Clean layout with left-aligned sections and modern spacing.</span>
+                </div>
+              </label>
+              <label class="template-card">
+                <input type="radio" name="layoutTemplate" value="executive">
+                <div class="card-content">
+                  <span class="title">Executive Elegance</span>
+                  <span class="desc">Traditional layout with centered headers and serif typography.</span>
+                </div>
+              </label>
+              <label class="template-card">
+                <input type="radio" name="layoutTemplate" value="tech">
+                <div class="card-content">
+                  <span class="title">Tech Focus</span>
+                  <span class="desc">Compact spacing, bold highlights, and clean badge-like elements.</span>
+                </div>
+              </label>
+            </div>
+          </div>
+
+          <div class="styling-section">
+            <h3>Typography</h3>
+            <div class="form-group">
+              <label for="selectFont">Font Family</label>
+              <select id="selectFont">
+                <option value="font-inter">Inter (Modern Clean Sans)</option>
+                <option value="font-outfit">Outfit (Geometric & Premium)</option>
+                <option value="font-roboto">Roboto (Neutral & Professional)</option>
+                <option value="font-playfair">Playfair Display (Classy Serif)</option>
+                <option value="font-fira">Fira Code (Modern Tech/Mono)</option>
+              </select>
+            </div>
+          </div>
+
+          <div class="styling-section">
+            <h3>Theme Colors</h3>
+            <div class="color-options">
+              <div class="form-group">
+                <label for="colorAccent">Accent Color</label>
+                <div class="color-picker-container">
+                  <input type="color" id="colorAccent" value="#1a56db">
+                  <input type="text" id="colorAccentText" value="#1a56db" maxlength="7">
+                </div>
+              </div>
+              <div class="preset-colors">
+                <label>Presets</label>
+                <div class="presets-row">
+                  <span class="color-preset" style="background-color: #1e293b;" data-color="#1e293b" title="Slate Grey"></span>
+                  <span class="color-preset" style="background-color: #1a56db;" data-color="#1a56db" title="Deep Blue"></span>
+                  <span class="color-preset" style="background-color: #0d9488;" data-color="#0d9488" title="Teal Green"></span>
+                  <span class="color-preset" style="background-color: #dc2626;" data-color="#dc2626" title="Crimson Red"></span>
+                  <span class="color-preset" style="background-color: #d97706;" data-color="#d97706" title="Amber Gold"></span>
+                  <span class="color-preset" style="background-color: #7c3aed;" data-color="#7c3aed" title="Purple Tech"></span>
+                </div>
+              </div>
+            </div>
+          </div>
+
+          <div class="styling-section">
+            <h3>Layout Sizing</h3>
+            <div class="form-grid">
+              <div class="form-group">
+                <label for="rangeMargin">Margins (A4 padding)</label>
+                <input type="range" id="rangeMargin" min="15" max="30" value="20" step="1">
+                <div class="range-value"><span id="valMargin">20</span>mm</div>
+              </div>
+              <div class="form-group">
+                <label for="rangeFontSize">Base Font Size</label>
+                <input type="range" id="rangeFontSize" min="10" max="15" value="12" step="0.5">
+                <div class="range-value"><span id="valFontSize">12</span>px</div>
+              </div>
+              <div class="form-group">
+                <label for="rangeSpacing">Section Spacing</label>
+                <input type="range" id="rangeSpacing" min="10" max="25" value="15" step="1">
+                <div class="range-value"><span id="valSpacing">15</span>px</div>
+              </div>
+              <div class="form-group">
+                <label for="rangeLineHeight">Line Spacing</label>
+                <input type="range" id="rangeLineHeight" min="1.1" max="1.6" value="1.3" step="0.05">
+                <div class="range-value"><span id="valLineHeight">1.3</span></div>
+              </div>
+            </div>
+          </div>
+        </section>
+
+      </main>
+    </aside>
+
+    <!-- Right Live Preview Panel -->
+    <section class="preview-panel" id="previewPanel">
+      <!-- Toolbar for preview sizing, printing & toggle -->
+      <div class="preview-toolbar">
+        <div class="view-modes">
+          <span class="status-indicator"><i class="fa-solid fa-arrows-spin fa-spin"></i> Live Sync Active</span>
+        </div>
+        <div class="toolbar-actions">
+          <button id="btnZoomOut" class="btn btn-icon" title="Zoom Out"><i class="fa-solid fa-magnifying-glass-minus"></i></button>
+          <span id="zoomPercent" class="zoom-text">100%</span>
+          <button id="btnZoomIn" class="btn btn-icon" title="Zoom In"><i class="fa-solid fa-magnifying-glass-plus"></i></button>
+          <button id="btnToggleSidebar" class="btn btn-icon toggle-sidebar-btn" title="Toggle Full Width Preview"><i class="fa-solid fa-maximize"></i></button>
+        </div>
+      </div>
+
+      <!-- Resume Page A4 Canvas -->
+      <div class="canvas-wrapper" id="canvasWrapper">
+        <article class="resume-paper template-modern font-inter" id="resumePaper">
+          <!-- The content here is dynamically built and outputted by script.js -->
+        </article>
+      </div>
+    </section>
+
+    <!-- Floating Toggle Button for Mobile Viewports -->
+    <button class="mobile-toggle-btn" id="mobileToggleBtn" title="Toggle Editor / Preview">
+      <i class="fa-solid fa-eye"></i>
+    </button>
+
+  </div>
+
+  <script src="script.js"></script>
+</body>
+</html>
