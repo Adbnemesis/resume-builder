@@ -60,6 +60,7 @@
         <button class="tab-btn" data-tab="skills"><i class="fa-solid fa-screwdriver-wrench"></i> Skills</button>
         <button class="tab-btn" data-tab="extracurricular"><i class="fa-solid fa-award"></i> Extras</button>
         <button class="tab-btn" data-tab="certifications"><i class="fa-solid fa-certificate"></i> Certs</button>
+        <button class="tab-btn" data-tab="layout"><i class="fa-solid fa-layer-group"></i> Layout</button>
         <button class="tab-btn" data-tab="styling"><i class="fa-solid fa-wand-magic-sparkles"></i> Theme</button>
       </nav>
 
@@ -162,16 +163,12 @@
 
         <!-- SKILLS PANEL -->
         <section class="tab-panel" id="panel-skills">
-          <h2>Skills</h2>
-          <div class="form-grid">
-            <div class="form-group col-span-2">
-              <label for="inputCoursework">Coursework (Comma Separated)</label>
-              <textarea id="inputCoursework" rows="3" placeholder="Data Structures, Operating Systems, ..."></textarea>
-            </div>
-            <div class="form-group col-span-2">
-              <label for="inputLanguagesFrameworks">Languages & Frameworks (Comma Separated)</label>
-              <textarea id="inputLanguagesFrameworks" rows="4" placeholder="C++, Java, React, NodeJS, ..."></textarea>
-            </div>
+          <div class="panel-header-action">
+            <h2>Skills</h2>
+            <button class="btn btn-small btn-secondary" id="btnAddSkillCategory"><i class="fa-solid fa-plus"></i> Add Category</button>
+          </div>
+          <div id="skillCategoriesList">
+            <!-- Dynamic skill categories rendered by script.js -->
           </div>
         </section>
 
@@ -197,9 +194,18 @@
           </div>
         </section>
 
+        <!-- LAYOUT ORDER PANEL -->
+        <section class="tab-panel" id="panel-layout">
+          <h2>Layout Order &amp; Visibility</h2>
+          <p class="panel-hint"><i class="fa-solid fa-circle-info"></i> Drag sections to reorder them on the resume. Toggle the eye icon to show/hide a section.</p>
+          <div id="sectionOrderList" class="section-order-list">
+            <!-- Dynamic rows rendered by script.js -->
+          </div>
+        </section>
+
         <!-- STYLING PANEL -->
         <section class="tab-panel" id="panel-styling">
-          <h2>Design & Layout Settings</h2>
+          <h2>Design &amp; Layout Settings</h2>
           
           <div class="styling-section">
             <h3>Theme Template</h3>
@@ -234,8 +240,8 @@
               <label for="selectFont">Font Family</label>
               <select id="selectFont">
                 <option value="font-inter">Inter (Modern Clean Sans)</option>
-                <option value="font-outfit">Outfit (Geometric & Premium)</option>
-                <option value="font-roboto">Roboto (Neutral & Professional)</option>
+                <option value="font-outfit">Outfit (Geometric &amp; Premium)</option>
+                <option value="font-roboto">Roboto (Neutral &amp; Professional)</option>
                 <option value="font-playfair">Playfair Display (Classy Serif)</option>
                 <option value="font-fira">Fira Code (Modern Tech/Mono)</option>
               </select>
@@ -302,6 +308,13 @@
       <div class="preview-toolbar">
         <div class="view-modes">
           <span class="status-indicator"><i class="fa-solid fa-arrows-spin fa-spin"></i> Live Sync Active</span>
+          <div class="ats-score-widget" id="atsWidget" title="ATS Completeness Score">
+            <span class="ats-label">ATS</span>
+            <div class="ats-bar-track">
+              <div class="ats-bar-fill" id="atsBarFill"></div>
+            </div>
+            <span class="ats-value" id="atsValue">0%</span>
+          </div>
         </div>
         <div class="toolbar-actions">
           <button id="btnZoomOut" class="btn btn-icon" title="Zoom Out"><i class="fa-solid fa-magnifying-glass-minus"></i></button>

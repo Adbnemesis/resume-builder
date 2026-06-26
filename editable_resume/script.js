@@ -36,26 +36,10 @@ const DEFAULT_RESUME_DATA = {
       location: "City, State, Country"
     }
   ],
-  skills: {
-    coursework: [
-      "Data Structures and Algorithms",
-      "Operating Systems",
-      "Object Oriented Programming",
-      "Database Systems"
-    ],
-    languagesFrameworks: [
-      "C++",
-      "Java",
-      "Python",
-      "HTML",
-      "CSS",
-      "JavaScript",
-      "React",
-      "NodeJS",
-      "SQL",
-      "Docker"
-    ]
-  },
+  skills: [
+    { id: "coursework", label: "Coursework", tags: ["Data Structures and Algorithms", "Operating Systems", "Object Oriented Programming", "Database Systems"] },
+    { id: "frameworks", label: "Frameworks/Languages", tags: ["C++", "Java", "Python", "HTML", "CSS", "JavaScript", "React", "NodeJS", "SQL", "Docker"] }
+  ],
   projects: [
     {
       name: "Your Project Title",
@@ -95,7 +79,16 @@ const DEFAULT_DESIGN_DATA = {
   margin: "20",
   fontSize: "12",
   spacing: "15",
-  lineHeight: "1.3"
+  lineHeight: "1.3",
+  sectionOrder: ["education", "skills", "projects", "experience", "extracurricular", "certifications"],
+  sectionVisibility: {
+    education: true,
+    skills: true,
+    projects: true,
+    experience: true,
+    extracurricular: true,
+    certifications: true
+  }
 };
 
 // Application States
@@ -114,7 +107,9 @@ document.addEventListener("DOMContentLoaded", async () => {
   
   // Initial renders
   renderAllForms();
+  initLayoutPanel();
   renderPreview();
+  updateATSWidget();
 });
 
 // State Storage Management
@@ -147,6 +142,15 @@ async function loadState() {
     resumeData = JSON.parse(JSON.stringify(DEFAULT_RESUME_DATA));
   }
 
+  // Migrate old flat skills format to new array format
+  if (resumeData.skills && !Array.isArray(resumeData.skills)) {
+    resumeData.skills = [
+      { id: "coursework", label: "Coursework", tags: resumeData.skills.coursework || [] },
+      { id: "frameworks", label: "Frameworks/Languages", tags: resumeData.skills.languagesFrameworks || [] }
+    ];
+  }
+  if (!resumeData.skills) resumeData.skills = JSON.parse(JSON.stringify(DEFAULT_RESUME_DATA.skills));
+
   if (savedDesign) {
     try {
       designData = JSON.parse(savedDesign);
@@ -156,12 +160,17 @@ async function loadState() {
   } else {
     designData = { ...DEFAULT_DESIGN_DATA };
   }
+
+  // Ensure sectionOrder and sectionVisibility exist (for backward compat)
+  if (!designData.sectionOrder) designData.sectionOrder = [...DEFAULT_DESIGN_DATA.sectionOrder];
+  if (!designData.sectionVisibility) designData.sectionVisibility = { ...DEFAULT_DESIGN_DATA.sectionVisibility };
 }
 
 function saveState() {
   localStorage.setItem("resume_builder_data", JSON.stringify(resumeData));
   localStorage.setItem("resume_builder_design", JSON.stringify(designData));
   renderPreview();
+  updateATSWidget();
 }
 
 // Switch between Editor Tabs
@@ -213,24 +222,7 @@ function initFormInputs() {
   });
 
   // Skills textareas mapping
-  const courseworkTextarea = document.getElementById("inputCoursework");
-  const skillsTextarea = document.getElementById("inputLanguagesFrameworks");
-
-  courseworkTextarea.addEventListener("input", (e) => {
-    resumeData.skills.coursework = e.target.value
-      .split(",")
-      .map(s => s.trim())
-      .filter(s => s.length > 0);
-    saveState();
-  });
-
-  skillsTextarea.addEventListener("input", (e) => {
-    resumeData.skills.languagesFrameworks = e.target.value
-      .split(",")
-      .map(s => s.trim())
-      .filter(s => s.length > 0);
-    saveState();
-  });
+  // Skills are now managed via tag chips — no textarea listeners needed
 }
 
 // Bind add buttons for list inputs
@@ -279,6 +271,19 @@ function initListControls() {
   document.getElementById("btnAddCertification").addEventListener("click", () => {
     resumeData.certifications.push("New Certificate Title");
     renderCertificationsForm();
+    saveState();
+  });
+
+  document.getElementById("btnAddSkillCategory").addEventListener("click", () => {
+    if (!Array.isArray(resumeData.skills)) {
+      resumeData.skills = [
+        { id: "coursework", label: "Coursework", tags: resumeData.skills.coursework || [] },
+        { id: "frameworks", label: "Frameworks/Languages", tags: resumeData.skills.languagesFrameworks || [] }
+      ];
+    }
+    const newId = `custom_${Date.now()}`;
+    resumeData.skills.push({ id: newId, label: "Custom Category", tags: [] });
+    renderSkillsForm();
     saveState();
   });
 }
@@ -421,7 +426,9 @@ function initZoomAndUtilityControls() {
       
       // Update form visual values
       renderAllForms();
+      renderSectionOrderList();
       renderPreview();
+      updateATSWidget();
     }
   });
 
@@ -465,6 +472,13 @@ function initZoomAndUtilityControls() {
         // Basic schema validations
         if (parsed.personal && parsed.education && parsed.skills) {
           resumeData = parsed;
+          // Migrate old flat skills format to new array format if needed
+          if (!Array.isArray(resumeData.skills)) {
+            resumeData.skills = [
+              { id: "coursework", label: "Coursework", tags: resumeData.skills.coursework || [] },
+              { id: "frameworks", label: "Frameworks/Languages", tags: resumeData.skills.languagesFrameworks || [] }
+            ];
+          }
           saveState();
           renderAllForms();
           await showCustomAlert("Import Successful", "Resume data successfully imported!", "fa-solid fa-circle-check", "#10b981");
@@ -540,6 +554,11 @@ function hexToRgb(hex) {
   return `${(num >> 16) & 255}, ${(num >> 8) & 255}, ${num & 255}`;
 }
 
+// Helper: Escape HTML special chars to prevent XSS in templates
+function escHtml(str) {
+  return String(str || '').replace(/&/g,'&amp;').replace(/</g,'&lt;').replace(/>/g,'&gt;').replace(/"/g,'&quot;');
+}
+
 // Populate form control values on initial load or reset
 function renderAllForms() {
   // Set personal details
@@ -556,9 +575,8 @@ function renderAllForms() {
   document.getElementById("inputHackerrankUsername").value = resumeData.personal.hackerrank?.username || "";
   document.getElementById("inputHackerrankUrl").value = resumeData.personal.hackerrank?.url || "";
 
-  // Skills
-  document.getElementById("inputCoursework").value = (resumeData.skills.coursework || []).join(", ");
-  document.getElementById("inputLanguagesFrameworks").value = (resumeData.skills.languagesFrameworks || []).join(", ");
+  // Skills (tag chip categories)
+  renderSkillsForm();
 
   // Styling inputs
   document.querySelector(`input[name="layoutTemplate"][value="${designData.template}"]`).checked = true;
@@ -594,6 +612,249 @@ function swapItems(arr, i1, i2) {
   const temp = arr[i1];
   arr[i1] = arr[i2];
   arr[i2] = temp;
+}
+
+// Skills: Tag chip input form
+function renderSkillsForm() {
+  const container = document.getElementById("skillCategoriesList");
+  if (!container) return;
+  container.innerHTML = "";
+
+  const skillsArr = Array.isArray(resumeData.skills) ? resumeData.skills : [];
+
+  skillsArr.forEach((cat, catIdx) => {
+    const div = document.createElement("div");
+    div.className = "skill-category-block";
+    div.innerHTML = `
+      <div class="skill-category-header">
+        <input type="text" class="skill-cat-label" value="${escHtml(cat.label)}" data-idx="${catIdx}" placeholder="Category name">
+        <button class="btn-remove-item skill-cat-delete" data-idx="${catIdx}" title="Remove category"><i class="fa-solid fa-trash"></i></button>
+      </div>
+      <div class="skill-tags-area" data-catidx="${catIdx}">
+        ${cat.tags.map((tag, tIdx) => `
+          <span class="skill-tag">
+            ${escHtml(tag)}
+            <button class="skill-tag-remove" data-catidx="${catIdx}" data-tidx="${tIdx}" title="Remove skill">×</button>
+          </span>
+        `).join("")}
+        <input type="text" class="skill-tag-input" data-catidx="${catIdx}" placeholder="Type skill, press Enter">
+      </div>
+    `;
+    container.appendChild(div);
+  });
+
+  // Bind label change
+  container.querySelectorAll(".skill-cat-label").forEach(inp => {
+    inp.addEventListener("input", (e) => {
+      resumeData.skills[+e.target.dataset.idx].label = e.target.value;
+      saveState();
+    });
+  });
+
+  // Bind category delete
+  container.querySelectorAll(".skill-cat-delete").forEach(btn => {
+    btn.addEventListener("click", (e) => {
+      const idx = +btn.dataset.idx;
+      resumeData.skills.splice(idx, 1);
+      renderSkillsForm();
+      saveState();
+    });
+  });
+
+  // Bind tag remove
+  container.querySelectorAll(".skill-tag-remove").forEach(btn => {
+    btn.addEventListener("click", (e) => {
+      const ci = +btn.dataset.catidx;
+      const ti = +btn.dataset.tidx;
+      resumeData.skills[ci].tags.splice(ti, 1);
+      renderSkillsForm();
+      saveState();
+    });
+  });
+
+  // Bind tag add on Enter
+  container.querySelectorAll(".skill-tag-input").forEach(inp => {
+    inp.addEventListener("keydown", (e) => {
+      if (e.key === "Enter" || e.key === ",") {
+        e.preventDefault();
+        const val = inp.value.trim().replace(/,$/, "");
+        const ci = +inp.dataset.catidx;
+        if (val && !resumeData.skills[ci].tags.includes(val)) {
+          resumeData.skills[ci].tags.push(val);
+          renderSkillsForm();
+          saveState();
+          // Refocus the input for the same category
+          const inputs = document.querySelectorAll(".skill-tag-input");
+          if (inputs[ci]) inputs[ci].focus();
+        }
+      }
+    });
+  });
+}
+
+// Layout Order Panel: drag-and-drop section reordering + visibility toggles
+const SECTION_META = {
+  education:       { label: "Education",       icon: "fa-graduation-cap" },
+  skills:          { label: "Skills",           icon: "fa-screwdriver-wrench" },
+  projects:        { label: "Projects",         icon: "fa-laptop-code" },
+  experience:      { label: "Experience",       icon: "fa-briefcase" },
+  extracurricular: { label: "Extracurriculars", icon: "fa-award" },
+  certifications:  { label: "Certifications",   icon: "fa-certificate" }
+};
+
+function initLayoutPanel() {
+  renderSectionOrderList();
+}
+
+function renderSectionOrderList() {
+  const container = document.getElementById("sectionOrderList");
+  if (!container) return;
+  container.innerHTML = "";
+
+  const order = designData.sectionOrder || Object.keys(SECTION_META);
+  const vis   = designData.sectionVisibility || {};
+
+  order.forEach((key, idx) => {
+    const meta = SECTION_META[key];
+    if (!meta) return;
+    const visible = vis[key] !== false;
+
+    const row = document.createElement("div");
+    row.className = "section-order-row" + (visible ? "" : " section-hidden");
+    row.dataset.key = key;
+    row.draggable = true;
+    row.innerHTML = `
+      <span class="section-drag-handle" title="Drag to reorder"><i class="fa-solid fa-grip-vertical"></i></span>
+      <i class="fa-solid ${meta.icon} section-row-icon"></i>
+      <span class="section-row-label">${meta.label}</span>
+      <div class="section-row-actions">
+        <button class="btn-move-up section-order-up" data-idx="${idx}" title="Move up"><i class="fa-solid fa-arrow-up"></i></button>
+        <button class="btn-move-down section-order-down" data-idx="${idx}" title="Move down"><i class="fa-solid fa-arrow-down"></i></button>
+        <button class="btn-visibility-toggle${visible ? " visible" : ""}" data-key="${key}" title="${visible ? "Hide section" : "Show section"}">
+          <i class="fa-solid ${visible ? "fa-eye" : "fa-eye-slash"}"></i>
+        </button>
+      </div>
+    `;
+    container.appendChild(row);
+  });
+
+  // Move up/down buttons
+  container.querySelectorAll(".section-order-up").forEach(btn => {
+    btn.addEventListener("click", () => {
+      const idx = +btn.dataset.idx;
+      if (idx === 0) return;
+      swapItems(designData.sectionOrder, idx, idx - 1);
+      renderSectionOrderList();
+      saveState();
+    });
+  });
+  container.querySelectorAll(".section-order-down").forEach(btn => {
+    btn.addEventListener("click", () => {
+      const idx = +btn.dataset.idx;
+      if (idx >= designData.sectionOrder.length - 1) return;
+      swapItems(designData.sectionOrder, idx, idx + 1);
+      renderSectionOrderList();
+      saveState();
+    });
+  });
+
+  // Visibility toggles
+  container.querySelectorAll(".btn-visibility-toggle").forEach(btn => {
+    btn.addEventListener("click", () => {
+      const key = btn.dataset.key;
+      designData.sectionVisibility[key] = !btn.classList.contains("visible");
+      renderSectionOrderList();
+      saveState();
+    });
+  });
+
+  // Drag-and-drop reorder
+  let dragSrc = null;
+  container.querySelectorAll(".section-order-row").forEach(row => {
+    row.addEventListener("dragstart", (e) => {
+      dragSrc = row;
+      row.classList.add("dragging");
+      e.dataTransfer.effectAllowed = "move";
+    });
+    row.addEventListener("dragend", () => {
+      row.classList.remove("dragging");
+      container.querySelectorAll(".section-order-row").forEach(r => r.classList.remove("drag-over"));
+    });
+    row.addEventListener("dragover", (e) => {
+      e.preventDefault();
+      if (row !== dragSrc) {
+        container.querySelectorAll(".section-order-row").forEach(r => r.classList.remove("drag-over"));
+        row.classList.add("drag-over");
+      }
+    });
+    row.addEventListener("drop", (e) => {
+      e.preventDefault();
+      if (dragSrc && dragSrc !== row) {
+        const srcKey = dragSrc.dataset.key;
+        const dstKey = row.dataset.key;
+        const srcIdx = designData.sectionOrder.indexOf(srcKey);
+        const dstIdx = designData.sectionOrder.indexOf(dstKey);
+        if (srcIdx !== -1 && dstIdx !== -1) {
+          designData.sectionOrder.splice(srcIdx, 1);
+          designData.sectionOrder.splice(dstIdx, 0, srcKey);
+          renderSectionOrderList();
+          saveState();
+        }
+      }
+    });
+  });
+}
+
+// ATS Score: calculate content completeness percentage
+function calcATSScore() {
+  let score = 0;
+  let total = 0;
+
+  const addCheck = (val, weight = 1) => {
+    total += weight;
+    if (val) score += weight;
+  };
+
+  const p = resumeData.personal || {};
+  addCheck(p.name);
+  addCheck(p.email);
+  addCheck(p.phone);
+  addCheck(p.location);
+  addCheck(p.linkedin?.username);
+  addCheck(p.github?.username);
+
+  addCheck(resumeData.education && resumeData.education.length > 0, 2);
+  addCheck(resumeData.experience && resumeData.experience.length > 0, 3);
+  addCheck(resumeData.projects && resumeData.projects.length > 0, 2);
+
+  const skillTags = Array.isArray(resumeData.skills)
+    ? resumeData.skills.reduce((a, c) => a + (c.tags ? c.tags.length : 0), 0)
+    : 0;
+  addCheck(skillTags > 0, 2);
+  addCheck(skillTags >= 5, 1);
+  addCheck(skillTags >= 10, 1);
+
+  addCheck(resumeData.certifications && resumeData.certifications.length > 0);
+  addCheck(resumeData.extracurricular && resumeData.extracurricular.length > 0);
+
+  if (resumeData.experience) {
+    const withHighlights = resumeData.experience.filter(e => e.highlights && e.highlights.length > 1);
+    addCheck(withHighlights.length > 0, 2);
+  }
+
+  return Math.min(100, Math.round((score / total) * 100));
+}
+
+function updateATSWidget() {
+  const pct = calcATSScore();
+  const bar = document.getElementById("atsBarFill");
+  const val = document.getElementById("atsValue");
+  if (!bar || !val) return;
+  bar.style.width = `${pct}%`;
+  val.textContent = `${pct}%`;
+  const color = pct >= 80 ? "#0d9488" : pct >= 50 ? "#d97706" : "#dc2626";
+  bar.style.background = color;
+  val.style.color = color;
 }
 
 // 1. Education
@@ -1074,16 +1335,19 @@ function renderPreview() {
     </header>
   `;
 
-  // 2. Education Section
-  if (resumeData.education && resumeData.education.length > 0) {
-    htmlContent += `
-      <section class="resume-section" data-section-link="education">
-        <h2 class="resume-section-title">Education</h2>
-    `;
-    
-    resumeData.education.forEach(edu => {
-      htmlContent += `
-        <div class="resume-item">
+  // Render sections in user-defined order, respecting visibility
+  const sectionOrder = designData.sectionOrder || ["education","skills","projects","experience","extracurricular","certifications"];
+  const sectionVis   = designData.sectionVisibility || {};
+
+  const buildSection = (key) => {
+    if (sectionVis[key] === false) return "";
+
+    if (key === "education") {
+      if (!resumeData.education || resumeData.education.length === 0) return "";
+      let s = `<section class="resume-section" data-section-link="education">
+        <h2 class="resume-section-title">Education</h2>`;
+      resumeData.education.forEach(edu => {
+        s += `<div class="resume-item">
           <div class="resume-item-header">
             <span class="resume-item-title">${edu.institution || ''}</span>
             <span>${edu.duration || ''}</span>
@@ -1092,112 +1356,62 @@ function renderPreview() {
             <span>${edu.degree || ''}</span>
             <span>${edu.location || ''}</span>
           </div>
-        </div>
-      `;
-    });
-    
-    htmlContent += `</section>`;
-  }
-
-  // 3. Skills Section
-  const hasCoursework = resumeData.skills.coursework && resumeData.skills.coursework.length > 0;
-  const hasLangs = resumeData.skills.languagesFrameworks && resumeData.skills.languagesFrameworks.length > 0;
-  
-  if (hasCoursework || hasLangs) {
-    htmlContent += `
-      <section class="resume-section" data-section-link="skills">
-        <h2 class="resume-section-title">Skill Set</h2>
-        <div class="skills-text-container">
-    `;
-    
-    if (designData.template === "tech") {
-      // Tech Badge Template rendering
-      if (hasCoursework) {
-        htmlContent += `
-          <div class="skills-category">
-            <strong>Coursework:</strong>
-            <div class="skills-badge-list">
-              ${resumeData.skills.coursework.map(s => `<span class="skill-badge">${s}</span>`).join("")}
-            </div>
-          </div>
-        `;
-      }
-      if (hasLangs) {
-        htmlContent += `
-          <div class="skills-category" style="margin-top: 10px;">
-            <strong>Frameworks/Languages:</strong>
-            <div class="skills-badge-list">
-              ${resumeData.skills.languagesFrameworks.map(s => `<span class="skill-badge">${s}</span>`).join("")}
-            </div>
-          </div>
-        `;
-      }
-    } else {
-      // Classic Text-based rendering
-      if (hasCoursework) {
-        htmlContent += `
-          <div class="skills-category">
-            <strong>Coursework:</strong> ${resumeData.skills.coursework.join(", ")}
-          </div>
-        `;
-      }
-      if (hasLangs) {
-        htmlContent += `
-          <div class="skills-category" style="margin-top: 4px;">
-            <strong>Frameworks/Languages:</strong> ${resumeData.skills.languagesFrameworks.join(", ")}
-          </div>
-        `;
-      }
+        </div>`;
+      });
+      return s + `</section>`;
     }
-    
-    htmlContent += `
-        </div>
-      </section>
-    `;
-  }
 
-  // 4. Projects Section
-  if (resumeData.projects && resumeData.projects.length > 0) {
-    htmlContent += `
-      <section class="resume-section" data-section-link="projects">
-        <h2 class="resume-section-title">Projects</h2>
-    `;
-    
-    resumeData.projects.forEach(proj => {
-      htmlContent += `
-        <div class="resume-item">
+    if (key === "skills") {
+      const skillsArr = Array.isArray(resumeData.skills) ? resumeData.skills : [];
+      const nonEmpty = skillsArr.filter(c => c.tags && c.tags.length > 0);
+      if (nonEmpty.length === 0) return "";
+      let s = `<section class="resume-section" data-section-link="skills">
+        <h2 class="resume-section-title">Skill Set</h2>
+        <div class="skills-text-container">`;
+      nonEmpty.forEach((cat, ci) => {
+        if (designData.template === "tech") {
+          s += `<div class="skills-category"${ci > 0 ? ' style="margin-top:10px"' : ''}>
+            <strong>${cat.label}:</strong>
+            <div class="skills-badge-list">
+              ${cat.tags.map(t => `<span class="skill-badge">${t}</span>`).join("")}
+            </div>
+          </div>`;
+        } else {
+          s += `<div class="skills-category"${ci > 0 ? ' style="margin-top:4px"' : ''}>
+            <strong>${cat.label}:</strong> ${cat.tags.join(", ")}
+          </div>`;
+        }
+      });
+      return s + `</div></section>`;
+    }
+
+    if (key === "projects") {
+      if (!resumeData.projects || resumeData.projects.length === 0) return "";
+      let s = `<section class="resume-section" data-section-link="projects">
+        <h2 class="resume-section-title">Projects</h2>`;
+      resumeData.projects.forEach(proj => {
+        s += `<div class="resume-item">
           <div class="resume-item-header">
             <span class="resume-item-title">${proj.name || ''}</span>
           </div>
-          <div class="resume-item-description" style="margin-top: 2px;">
+          <div class="resume-item-description" style="margin-top:2px;">
             &bull; ${proj.description || ''}
           </div>
-        </div>
-      `;
-    });
-    
-    htmlContent += `</section>`;
-  }
+        </div>`;
+      });
+      return s + `</section>`;
+    }
 
-  // 5. Experience Section
-  if (resumeData.experience && resumeData.experience.length > 0) {
-    htmlContent += `
-      <section class="resume-section" data-section-link="experience">
-        <h2 class="resume-section-title">Experience</h2>
-    `;
-    
-    resumeData.experience.forEach(exp => {
-      let highlightsList = "";
-      if (exp.highlights && exp.highlights.length > 0) {
-        highlightsList += `<ul class="resume-highlights">`;
-        exp.highlights.forEach(hl => {
-          highlightsList += `<li>${hl}</li>`;
-        });
-        highlightsList += `</ul>`;
-      }
-
-      htmlContent += `
-        <div class="resume-item">
+    if (key === "experience") {
+      if (!resumeData.experience || resumeData.experience.length === 0) return "";
+      let s = `<section class="resume-section" data-section-link="experience">
+        <h2 class="resume-section-title">Experience</h2>`;
+      resumeData.experience.forEach(exp => {
+        let hl = "";
+        if (exp.highlights && exp.highlights.length > 0) {
+          hl = `<ul class="resume-highlights">` + exp.highlights.map(h => `<li>${h}</li>`).join("") + `</ul>`;
+        }
+        s += `<div class="resume-item">
           <div class="resume-item-header">
             <span class="resume-item-title">${exp.company || ''}</span>
             <span>${exp.duration || ''}</span>
@@ -1206,60 +1420,39 @@ function renderPreview() {
             <span>${exp.role || ''}</span>
             <span>${exp.location || ''}</span>
           </div>
-          ${highlightsList}
-        </div>
-      `;
-    });
-    
-    htmlContent += `</section>`;
-  }
-
-  // 6. Extracurricular Section
-  if (resumeData.extracurricular && resumeData.extracurricular.length > 0) {
-    htmlContent += `
-      <section class="resume-section" data-section-link="extracurricular">
-        <h2 class="resume-section-title">Extracurricular</h2>
-        <div class="extras-list">
-    `;
-    
-    resumeData.extracurricular.forEach(extra => {
-      htmlContent += `
-        <div class="extras-item">
-          <strong>${extra.title || ''}:</strong> ${extra.description || ''}
-        </div>
-      `;
-    });
-    
-    htmlContent += `
-        </div>
-      </section>
-    `;
-  }
-
-  // 7. Certifications Section
-  if (resumeData.certifications && resumeData.certifications.length > 0) {
-    htmlContent += `
-      <section class="resume-section" data-section-link="certifications">
-        <h2 class="resume-section-title">Certifications</h2>
-    `;
-    
-    if (designData.template === "tech") {
-      htmlContent += `<ul class="certs-bullet-list">`;
-      resumeData.certifications.forEach(cert => {
-        htmlContent += `<li>${cert}</li>`;
+          ${hl}
+        </div>`;
       });
-      htmlContent += `</ul>`;
-    } else {
-      // Grid format for clean inline listings
-      htmlContent += `<div class="certs-grid">`;
-      resumeData.certifications.forEach(cert => {
-        htmlContent += `<div>&bull; ${cert}</div>`;
-      });
-      htmlContent += `</div>`;
+      return s + `</section>`;
     }
-    
-    htmlContent += `</section>`;
-  }
+
+    if (key === "extracurricular") {
+      if (!resumeData.extracurricular || resumeData.extracurricular.length === 0) return "";
+      let s = `<section class="resume-section" data-section-link="extracurricular">
+        <h2 class="resume-section-title">Extracurricular</h2>
+        <div class="extras-list">`;
+      resumeData.extracurricular.forEach(extra => {
+        s += `<div class="extras-item"><strong>${extra.title || ''}:</strong> ${extra.description || ''}</div>`;
+      });
+      return s + `</div></section>`;
+    }
+
+    if (key === "certifications") {
+      if (!resumeData.certifications || resumeData.certifications.length === 0) return "";
+      let s = `<section class="resume-section" data-section-link="certifications">
+        <h2 class="resume-section-title">Certifications</h2>`;
+      if (designData.template === "tech") {
+        s += `<ul class="certs-bullet-list">` + resumeData.certifications.map(c => `<li>${c}</li>`).join("") + `</ul>`;
+      } else {
+        s += `<div class="certs-grid">` + resumeData.certifications.map(c => `<div>&bull; ${c}</div>`).join("") + `</div>`;
+      }
+      return s + `</section>`;
+    }
+
+    return "";
+  };
+
+  sectionOrder.forEach(key => { htmlContent += buildSection(key); });
 
   // Assign generated layout to DOM page canvas
   paper.innerHTML = htmlContent;
@@ -1269,22 +1462,17 @@ function renderPreview() {
   previewSections.forEach(sect => {
     sect.addEventListener("click", () => {
       const sectionKey = sect.dataset.sectionLink;
-      
-      // Toggle Editor Tab
       const tabBtn = document.querySelector(`.tab-btn[data-tab="${sectionKey}"]`);
       if (tabBtn) {
         tabBtn.click();
-        
-        // Flash/pulse animation inside form heading to draw attention
         const panel = document.getElementById(`panel-${sectionKey}`);
-        if(panel) {
+        if (panel) {
           const h2 = panel.querySelector("h2");
-          if(h2) {
+          if (h2) {
             h2.style.transition = 'none';
             h2.style.color = 'var(--accent-color)';
             h2.style.transform = 'scale(1.05)';
             h2.style.textShadow = '0 0 10px rgba(var(--accent-color-rgb), 0.5)';
-            
             setTimeout(() => {
               h2.style.transition = 'all 0.5s ease';
               h2.style.color = '';
@@ -1401,7 +1589,7 @@ function parseResumeText(text) {
   const data = {
     personal: { name: "", location: "", phone: "", email: "", linkedin: {}, github: {}, leetcode: {}, hackerrank: {} },
     education: [],
-    skills: { coursework: [], languagesFrameworks: [] },
+    skills: [], // Array of { id, label, tags }
     projects: [],
     experience: [],
     extracurricular: [],
@@ -1547,16 +1735,22 @@ function parseResumeText(text) {
 
   // 2. Parse Skills
   const skillsLines = getSectionContent(skillsIdx, getNextSectionIdx("skills"));
+  const parsedCoursework = [];
+  const parsedFrameworks = [];
+  const parsedOther = [];
   skillsLines.forEach(l => {
     if (l.startsWith("Coursework:")) {
-      data.skills.coursework = l.replace("Coursework:", "").split(",").map(s => s.trim()).filter(s => s.length > 0);
+      parsedCoursework.push(...l.replace("Coursework:", "").split(",").map(s => s.trim()).filter(s => s.length > 0));
     } else if (l.startsWith("Frameworks/Languages:") || l.startsWith("Languages/Frameworks:")) {
-      data.skills.languagesFrameworks = l.replace(/Frameworks\/Languages:|Languages\/Frameworks:/, "").split(",").map(s => s.trim()).filter(s => s.length > 0);
+      parsedFrameworks.push(...l.replace(/Frameworks\/Languages:|Languages\/Frameworks:/, "").split(",").map(s => s.trim()).filter(s => s.length > 0));
     } else {
-      const skillsArray = l.split(",").map(s => s.trim()).filter(s => s.length > 0);
-      data.skills.languagesFrameworks.push(...skillsArray);
+      parsedOther.push(...l.split(",").map(s => s.trim()).filter(s => s.length > 0));
     }
   });
+  if (parsedCoursework.length > 0) data.skills.push({ id: "coursework", label: "Coursework", tags: parsedCoursework });
+  if (parsedFrameworks.length > 0) data.skills.push({ id: "frameworks", label: "Frameworks/Languages", tags: parsedFrameworks });
+  else if (parsedOther.length > 0) data.skills.push({ id: "frameworks", label: "Frameworks/Languages", tags: parsedOther });
+  if (data.skills.length === 0) data.skills = JSON.parse(JSON.stringify(DEFAULT_RESUME_DATA.skills));
 
   // 3. Parse Projects
   const projectsLines = getSectionContent(projectsIdx, getNextSectionIdx("projects"));
