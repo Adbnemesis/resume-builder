@@ -16,6 +16,9 @@
   <!-- Custom Stylesheets -->
   <link rel="stylesheet" href="style.css">
   <link rel="stylesheet" href="resume.css">
+  
+  <!-- PDF.js library for client-side PDF text extraction -->
+  <script src="https://cdnjs.cloudflare.com/ajax/libs/pdf.js/3.4.120/pdf.min.js"></script>
 </head>
 <body>
   <div class="app-container">
@@ -31,13 +34,17 @@
           <button id="btnPrint" class="btn btn-primary" title="Print or Save as PDF">
             <i class="fa-solid fa-print"></i> <span>PDF</span>
           </button>
-          <button id="btnExport" class="btn btn-secondary" title="Export as JSON file">
-            <i class="fa-solid fa-download"></i> <span>Export</span>
+          <button id="btnExport" class="btn btn-secondary" title="Export resume data to a JSON backup file">
+            <i class="fa-solid fa-download"></i> <span>Export JSON</span>
           </button>
-          <button id="btnImportTrigger" class="btn btn-secondary" title="Import from JSON file">
-            <i class="fa-solid fa-upload"></i> <span>Import</span>
+          <button id="btnImportTrigger" class="btn btn-secondary" title="Import a JSON backup file (.json) previously exported from this editor">
+            <i class="fa-solid fa-upload"></i> <span>Import JSON</span>
           </button>
           <input type="file" id="fileImport" accept=".json" style="display: none;">
+          <button id="btnImportPDFTrigger" class="btn btn-secondary" title="Import and parse an existing PDF resume">
+            <i class="fa-solid fa-file-pdf"></i> <span>Import PDF</span>
+          </button>
+          <input type="file" id="fileImportPDF" accept=".pdf" style="display: none;">
           <button id="btnReset" class="btn btn-danger" title="Reset to default data">
             <i class="fa-solid fa-arrow-rotate-left"></i> <span>Reset</span>
           </button>

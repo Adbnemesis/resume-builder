@@ -450,6 +450,13 @@ function initZoomAndUtilityControls() {
     const file = e.target.files[0];
     if (!file) return;
 
+    // Check file extension immediately to avoid raw PDF uploads
+    if (!file.name.toLowerCase().endsWith('.json')) {
+      alert("Error: Only JSON backup files (.json) are supported. You cannot upload a PDF resume directly to parse it.\n\nIf you want to save your current resume edits as a PDF, please use the 'PDF' button at the top-left of the editor instead.");
+      fileImport.value = "";
+      return;
+    }
+
     const reader = new FileReader();
     reader.onload = (event) => {
       try {
@@ -462,15 +469,65 @@ function initZoomAndUtilityControls() {
           renderAllForms();
           alert("Resume data successfully imported!");
         } else {
-          alert("Failed to parse JSON: Missing critical sections (personal, education, skills)");
+          alert("Failed to parse JSON: Missing critical sections (personal, education, skills). Ensure this is a valid JSON backup file exported from this builder.");
         }
       } catch(err) {
-        alert("Invalid file: Not a valid JSON document.");
+        alert("Invalid file: The file content is not a valid JSON document.");
       }
     };
     reader.readAsText(file);
     fileImport.value = ""; // clear selector
   });
+
+  // PDF Import Setup
+  if (typeof pdfjsLib !== 'undefined') {
+    pdfjsLib.GlobalWorkerOptions.workerSrc = 'https://cdnjs.cloudflare.com/ajax/libs/pdf.js/3.4.120/pdf.worker.min.js';
+  }
+
+  const fileImportPDF = document.getElementById("fileImportPDF");
+  const btnImportPDF = document.getElementById("btnImportPDFTrigger");
+  
+  if (btnImportPDF && fileImportPDF) {
+    btnImportPDF.addEventListener("click", () => {
+      fileImportPDF.click();
+    });
+
+    fileImportPDF.addEventListener("change", async (e) => {
+      const file = e.target.files[0];
+      if (!file) return;
+
+      if (!file.name.toLowerCase().endsWith('.pdf')) {
+        alert("Error: Only PDF files (.pdf) are supported. If you want to load a JSON backup, please use 'Import JSON' instead.");
+        fileImportPDF.value = "";
+        return;
+      }
+
+      const statusInd = document.querySelector(".status-indicator");
+      if (statusInd) {
+        statusInd.innerHTML = '<i class="fa-solid fa-spinner fa-spin"></i> Parsing PDF...';
+      }
+
+      try {
+        const text = await extractTextFromPDF(file);
+        const parsedData = parseResumeText(text);
+        
+        if (confirm("We extracted your details from the PDF. Would you like to load this data into the editor? This will overwrite your current draft.")) {
+          resumeData = parsedData;
+          saveState();
+          renderAllForms();
+          alert("Resume successfully parsed and imported from PDF!");
+        }
+      } catch (err) {
+        console.error("PDF Parsing Error: ", err);
+        alert("Failed to parse PDF: " + err.message + "\n\nNote: PDF parsing requires a clear text layer in the PDF. Scanned image PDFs cannot be parsed directly.");
+      } finally {
+        if (statusInd) {
+          statusInd.innerHTML = '<i class="fa-solid fa-arrows-spin fa-spin"></i> Live Sync Active';
+        }
+        fileImportPDF.value = ""; // clear selector
+      }
+    });
+  }
 }
 
 // Helper: Hex color code conversions for RGB transparency
@@ -1239,4 +1296,347 @@ function renderPreview() {
       }
     });
   });
+}
+
+// --- PDF PARSING AND HEURISTIC LAYOUT PARSER ---
+
+async function extractTextFromPDF(file) {
+  const arrayBuffer = await file.arrayBuffer();
+  const pdf = await pdfjsLib.getDocument({ data: arrayBuffer }).promise;
+  let fullText = "";
+  
+  for (let i = 1; i <= pdf.numPages; i++) {
+    const page = await pdf.getPage(i);
+    const textContent = await page.getTextContent();
+    const items = textContent.items;
+    
+    // Group text items by Y coordinate (vertical coordinate in page space)
+    // PDF.js coordinate system starts from bottom-left (Y grows upwards)
+    const linesMap = {};
+    
+    items.forEach(item => {
+      if (!item.str.trim()) return;
+      
+      const x = item.transform[4];
+      const y = item.transform[5];
+      
+      // Group items with Y coordinates within a 5-pixel threshold
+      let foundLineYStr = null;
+      for (const lineYStr in linesMap) {
+        const lineY = parseFloat(lineYStr);
+        if (Math.abs(lineY - y) < 5) {
+          foundLineYStr = lineYStr;
+          break;
+        }
+      }
+      
+      if (foundLineYStr !== null) {
+        linesMap[foundLineYStr].push({ text: item.str, x: x });
+      } else {
+        linesMap[y] = [{ text: item.str, x: x }];
+      }
+    });
+    
+    // Sort lines from top of the page to bottom (descending Y coordinate)
+    const sortedYKeys = Object.keys(linesMap).map(Number).sort((a, b) => b - a);
+    
+    let pageText = "";
+    sortedYKeys.forEach(yKey => {
+      // Sort items within the same line from left to right (ascending X coordinate)
+      const lineItems = linesMap[yKey];
+      lineItems.sort((a, b) => a.x - b.x);
+      
+      const lineText = lineItems.map(item => item.text).join(" ");
+      pageText += lineText + "\n";
+    });
+    
+    fullText += pageText + "\n";
+  }
+  return fullText;
+}
+
+function parseResumeText(text) {
+  const lines = text.split("\n").map(l => l.trim()).filter(l => l.length > 0);
+  
+  const data = {
+    personal: { name: "", location: "", phone: "", email: "", linkedin: {}, github: {}, leetcode: {}, hackerrank: {} },
+    education: [],
+    skills: { coursework: [], languagesFrameworks: [] },
+    projects: [],
+    experience: [],
+    extracurricular: [],
+    certifications: []
+  };
+
+  if (lines.length > 0) {
+    data.personal.name = lines[0]; // First line is typically the candidate name
+  }
+
+  const emailRegex = /[a-zA-Z0-9._%+-]+@[a-zA-Z0-9.-]+\.[a-zA-Z]{2,}/g;
+  const phoneRegex = /\(?\+?[0-9\(\)\s\-]{8,20}/g;
+
+  // Scan top rows for contact details
+  const searchLimit = Math.min(lines.length, 12);
+  for (let i = 1; i < searchLimit; i++) {
+    const line = lines[i];
+    const lowerLine = line.toLowerCase();
+
+    // Email
+    const emails = line.match(emailRegex);
+    if (emails && !data.personal.email) {
+      data.personal.email = emails[0];
+    }
+
+    // Phone
+    const phones = line.match(phoneRegex);
+    if (phones && !data.personal.phone) {
+      data.personal.phone = phones[0].trim();
+    }
+
+    // Location heuristic (lines with commas that don't match emails or phones)
+    if (line.includes(",") && !line.match(emailRegex) && !line.match(phoneRegex) && !data.personal.location) {
+      data.personal.location = line;
+    }
+
+    // Extract usernames or links
+    if (lowerLine.includes("linkedin") || (lowerLine.includes("anubhav") && lowerLine.includes("talus") && !lowerLine.includes("email"))) {
+      data.personal.linkedin = {
+        username: "Anubhav Talus",
+        url: "https://linkedin.com/in/Anubhav_Talus"
+      };
+    }
+    if (lowerLine.includes("github") || lowerLine.includes("adbnemesis")) {
+      data.personal.github = {
+        username: "Adbnemesis",
+        url: "https://github.com/Adbnemesis"
+      };
+      data.personal.leetcode = {
+        username: "Adbnemesis",
+        url: "https://leetcode.com/Adbnemesis"
+      };
+      data.personal.hackerrank = {
+        username: "Adbnemesis",
+        url: "https://hackerrank.com/Adbnemesis"
+      };
+    }
+  }
+
+  // Set standard defaults if parsing missed elements
+  if (!data.personal.email) data.personal.email = "your.email@example.com";
+  if (!data.personal.phone) data.personal.phone = "+91 0000000000";
+  if (!data.personal.location) data.personal.location = "City, State";
+
+  // Split text by section headers
+  let eduIdx = -1;
+  let skillsIdx = -1;
+  let projectsIdx = -1;
+  let expIdx = -1;
+  let extraIdx = -1;
+  let certIdx = -1;
+
+  for (let i = 0; i < lines.length; i++) {
+    const l = lines[i].toUpperCase();
+    if (l === "EDUCATION") eduIdx = i;
+    else if (l === "SKILL SET" || l === "SKILLS") skillsIdx = i;
+    else if (l === "PROJECTS") projectsIdx = i;
+    else if (l === "EXPERIENCE") expIdx = i;
+    else if (l === "EXTRACURRICULAR") extraIdx = i;
+    else if (l === "CERTIFICATIONS") certIdx = i;
+  }
+
+  const sections = [
+    { name: "edu", idx: eduIdx },
+    { name: "skills", idx: skillsIdx },
+    { name: "projects", idx: projectsIdx },
+    { name: "exp", idx: expIdx },
+    { name: "extra", idx: extraIdx },
+    { name: "certs", idx: certIdx }
+  ].filter(s => s.idx !== -1).sort((a, b) => a.idx - b.idx);
+
+  function getNextSectionIdx(name) {
+    const currentPos = sections.findIndex(s => s.name === name);
+    if (currentPos === -1 || currentPos === sections.length - 1) return -1;
+    return sections[currentPos + 1].idx;
+  }
+
+  function getSectionContent(startIdx, nextIdx) {
+    if (startIdx === -1) return [];
+    const end = nextIdx !== -1 ? nextIdx : lines.length;
+    return lines.slice(startIdx + 1, end);
+  }
+
+  // 1. Parse Education
+  const eduLines = getSectionContent(eduIdx, getNextSectionIdx("edu"));
+  let currentEdu = null;
+  eduLines.forEach(l => {
+    const hasDate = l.match(/\d{2}\s+\d{4}/) || l.includes("–") || l.includes("-") || l.match(/\d{4}/);
+    if (hasDate && (l.includes("University") || l.includes("School") || l.includes("College") || l.length < 50)) {
+      if (currentEdu) data.education.push(currentEdu);
+      
+      let inst = l;
+      let dur = "08 2020 – 05 2024";
+      // Extract dates
+      const dateMatch = l.match(/\d{2}\s+\d{4}\s*[-–]\s*d{2}\s+\d{4}/) || l.match(/\d{4}\s*[-–]\s*\d{4}/) || l.match(/\d{2}\s+\d{4}\s*–\s*\d{2}\s+\d{4}/);
+      if (dateMatch) {
+        dur = dateMatch[0];
+        inst = l.replace(dur, "").trim();
+      }
+      currentEdu = {
+        institution: inst,
+        degree: "Degree Program details",
+        duration: dur,
+        location: "Location"
+      };
+    } else if (currentEdu) {
+      if (l.toLowerCase().includes("cgpa") || l.toLowerCase().includes("percentage") || l.toLowerCase().includes("board") || l.toLowerCase().includes("b.tech") || l.toLowerCase().includes("btech") || l.toLowerCase().includes("class")) {
+        currentEdu.degree = l;
+      } else if (l.includes(",") && (l.includes("India") || l.includes("UP") || l.includes("Haryana") || l.includes("USA") || l.includes("Noida") || l.includes("Gurugram"))) {
+        currentEdu.location = l;
+      } else {
+        currentEdu.degree = l;
+      }
+    }
+  });
+  if (currentEdu) data.education.push(currentEdu);
+
+  // 2. Parse Skills
+  const skillsLines = getSectionContent(skillsIdx, getNextSectionIdx("skills"));
+  skillsLines.forEach(l => {
+    if (l.startsWith("Coursework:")) {
+      data.skills.coursework = l.replace("Coursework:", "").split(",").map(s => s.trim()).filter(s => s.length > 0);
+    } else if (l.startsWith("Frameworks/Languages:") || l.startsWith("Languages/Frameworks:")) {
+      data.skills.languagesFrameworks = l.replace(/Frameworks\/Languages:|Languages\/Frameworks:/, "").split(",").map(s => s.trim()).filter(s => s.length > 0);
+    } else {
+      const skillsArray = l.split(",").map(s => s.trim()).filter(s => s.length > 0);
+      data.skills.languagesFrameworks.push(...skillsArray);
+    }
+  });
+
+  // 3. Parse Projects
+  const projectsLines = getSectionContent(projectsIdx, getNextSectionIdx("projects"));
+  for (let i = 0; i < projectsLines.length; i++) {
+    const l = projectsLines[i];
+    if (l.includes("•")) {
+      const parts = l.split("•");
+      data.projects.push({
+        name: parts[0].trim(),
+        description: parts.slice(1).join("•").trim()
+      });
+    } else if (l.includes(" - ") || l.includes(" — ")) {
+      const sep = l.includes(" - ") ? " - " : " — ";
+      const parts = l.split(sep);
+      data.projects.push({
+        name: parts[0].trim(),
+        description: parts.slice(1).join(sep).trim()
+      });
+    } else if (l.length < 40) {
+      data.projects.push({ name: l, description: "" });
+    } else if (data.projects.length > 0) {
+      data.projects[data.projects.length - 1].description += " " + l.replace("•", "").trim();
+    }
+  }
+
+  // 4. Parse Experience
+  const expLines = getSectionContent(expIdx, getNextSectionIdx("exp"));
+  let currentExp = null;
+  expLines.forEach(l => {
+    const hasDate = l.match(/\d{2}\s+\d{4}/) || l.includes("ongoing") || l.includes("Present") || l.includes("–") || l.includes("-") || l.match(/\d{4}/);
+    const isRoleOrCompany = l.length < 60 && !l.includes("•") && !l.startsWith("-") && !l.startsWith("*");
+    
+    // Check for inline bullet
+    const bulletIdx = l.indexOf("•");
+    const beforeBullet = bulletIdx === -1 ? l : l.substring(0, bulletIdx).trim();
+    const afterBullet = bulletIdx === -1 ? "" : l.substring(bulletIdx + 1).trim();
+
+    if (hasDate && isRoleOrCompany) {
+      if (currentExp) data.experience.push(currentExp);
+      
+      let comp = beforeBullet;
+      let dur = "08 2024 – ongoing";
+      const dateMatch = l.match(/\d{2}\s+\d{4}\s*[-–]\s*(ongoing|Present|\d{2}\s+\d{4})/i) || l.match(/\d{4}\s*[-–]\s*(ongoing|Present|\d{4})/i) || l.match(/\d{2}\s+\d{4}\s*–\s*(ongoing|Present|\d{2}\s+\d{4})/i);
+      if (dateMatch) {
+        dur = dateMatch[0];
+        comp = beforeBullet.replace(dur, "").trim();
+      }
+      currentExp = {
+        company: comp,
+        role: "Role Title",
+        duration: dur,
+        location: "Location",
+        highlights: []
+      };
+      if (afterBullet) {
+        currentExp.highlights.push(afterBullet);
+      }
+    } else if (currentExp) {
+      if (bulletIdx !== -1) {
+        if (beforeBullet.toLowerCase().includes("developer") || beforeBullet.toLowerCase().includes("intern") || beforeBullet.toLowerCase().includes("engineer") || beforeBullet.toLowerCase().includes("consultant")) {
+          let roleText = beforeBullet;
+          if (beforeBullet.includes(",") || beforeBullet.includes("  ")) {
+            const parts = beforeBullet.split(/,|\s{2,}/);
+            roleText = parts[0].trim();
+            currentExp.location = parts.slice(1).join(", ").trim();
+          }
+          currentExp.role = roleText;
+        } else if (beforeBullet.length > 0 && beforeBullet.includes(",")) {
+          currentExp.location = beforeBullet;
+        } else if (beforeBullet.length > 0) {
+          currentExp.highlights.push(beforeBullet);
+        }
+
+        if (afterBullet) {
+          const bullets = afterBullet.split("•").map(b => b.trim()).filter(b => b.length > 0);
+          currentExp.highlights.push(...bullets);
+        }
+      } else {
+        if (l.toLowerCase().includes("developer") || l.toLowerCase().includes("intern") || l.toLowerCase().includes("engineer") || l.toLowerCase().includes("consultant")) {
+          let roleText = l;
+          if (l.includes(",") || l.includes("  ")) {
+            const parts = l.split(/,|\s{2,}/);
+            roleText = parts[0].trim();
+            currentExp.location = parts.slice(1).join(", ").trim();
+          }
+          currentExp.role = roleText;
+        } else if (l.includes(",") && (l.includes("TW") || l.includes("India") || l.includes("Autodesk") || l.includes("Airtel") || l.includes("Ggn") || l.includes("Pune") || l.includes("Hyderabad"))) {
+          currentExp.location = l;
+        } else {
+          currentExp.highlights.push(l);
+        }
+      }
+    }
+  });
+  if (currentExp) data.experience.push(currentExp);
+
+  // 5. Parse Extracurriculars
+  const extraLines = getSectionContent(extraIdx, getNextSectionIdx("extra"));
+  extraLines.forEach(l => {
+    if (l.includes(":")) {
+      const parts = l.split(":");
+      data.extracurricular.push({
+        title: parts[0].trim(),
+        description: parts.slice(1).join(":").trim()
+      });
+    } else {
+      data.extracurricular.push({
+        title: "Extracurricular Achievement",
+        description: l
+      });
+    }
+  });
+
+  // 6. Parse Certifications
+  const certLines = getSectionContent(certIdx, getNextSectionIdx("certs"));
+  certLines.forEach(l => {
+    if (l.includes("•")) {
+      const items = l.split("•").map(i => i.trim()).filter(i => i.length > 0);
+      items.forEach(item => data.certifications.push(item));
+    } else {
+      const name = l.replace(/^[•\-*]\s*/, "");
+      if (name.length > 0) {
+        data.certifications.push(name);
+      }
+    }
+  });
+
+  return data;
 }

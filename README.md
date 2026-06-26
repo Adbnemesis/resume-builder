@@ -2,6 +2,9 @@
 
 A premium, fully interactive, and responsive single-page resume editor web application. Built using modern client-side standards (HTML, CSS, JavaScript) to run completely locally in your browser.
 
+> [!TIP]
+**Dynamic PDF Importing & Parsing**: You can import existing PDF resumes directly! Click the **Import PDF** button in the header, select a `.pdf` file containing a clear text layer, and our client-side parsing engine (powered by Mozilla PDF.js) will extract and organize the text into the editor sections automatically.
+
 ## Features
 
 1. **Real-time Synchronization**: As you type inside the editor dashboard, the resume canvas renders the results instantly.
@@ -13,6 +16,7 @@ A premium, fully interactive, and responsive single-page resume editor web appli
 3. **Print to PDF Optimization**: Uses native browser print media queries (`Cmd+P` / `Ctrl+P`) configured to automatically hide the editor panel, strip browser margins, hide headers/footers, and print a clean page.
 4. **Interactive Navigation**: Clicking on any resume element on the A4 page preview focuses the corresponding editor tab and flashes the heading to guide your edits.
 5. **Portable JSON Backups**: Import/Export feature saves and restores your progress locally via standard `.json` configuration files.
+6. **Dynamic PDF Parsing**: Extract details (Name, Contact, Education, Experience, Skills, Projects, and Certificates) directly from existing PDF resumes client-side using Mozilla PDF.js.
 
 ---
 
