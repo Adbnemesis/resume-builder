@@ -412,8 +412,8 @@ function initZoomAndUtilityControls() {
   });
 
   // Reset Button
-  document.getElementById("btnReset").addEventListener("click", () => {
-    if (confirm("Are you sure you want to reset all edits to the original default resume?")) {
+  document.getElementById("btnReset").addEventListener("click", async () => {
+    if (await showCustomConfirm("Reset Resume", "Are you sure you want to reset all edits to the original default resume?")) {
       resumeData = JSON.parse(JSON.stringify(DEFAULT_RESUME_DATA));
       designData = { ...DEFAULT_DESIGN_DATA };
       localStorage.removeItem("resume_builder_data");
@@ -446,19 +446,19 @@ function initZoomAndUtilityControls() {
     fileImport.click();
   });
 
-  fileImport.addEventListener("change", (e) => {
+  fileImport.addEventListener("change", async (e) => {
     const file = e.target.files[0];
     if (!file) return;
 
     // Check file extension immediately to avoid raw PDF uploads
     if (!file.name.toLowerCase().endsWith('.json')) {
-      alert("Error: Only JSON backup files (.json) are supported. You cannot upload a PDF resume directly to parse it.\n\nIf you want to save your current resume edits as a PDF, please use the 'PDF' button at the top-left of the editor instead.");
+      await showCustomAlert("Error", "Error: Only JSON backup files (.json) are supported. You cannot upload a PDF resume directly to parse it.\n\nIf you want to save your current resume edits as a PDF, please use the 'PDF' button at the top-left of the editor instead.", "fa-solid fa-circle-exclamation", "#ef4444");
       fileImport.value = "";
       return;
     }
 
     const reader = new FileReader();
-    reader.onload = (event) => {
+    reader.onload = async (event) => {
       try {
         const parsed = JSON.parse(event.target.result);
         
@@ -467,12 +467,12 @@ function initZoomAndUtilityControls() {
           resumeData = parsed;
           saveState();
           renderAllForms();
-          alert("Resume data successfully imported!");
+          await showCustomAlert("Import Successful", "Resume data successfully imported!", "fa-solid fa-circle-check", "#10b981");
         } else {
-          alert("Failed to parse JSON: Missing critical sections (personal, education, skills). Ensure this is a valid JSON backup file exported from this builder.");
+          await showCustomAlert("Import Failed", "Failed to parse JSON: Missing critical sections (personal, education, skills). Ensure this is a valid JSON backup file exported from this builder.", "fa-solid fa-circle-exclamation", "#ef4444");
         }
       } catch(err) {
-        alert("Invalid file: The file content is not a valid JSON document.");
+        await showCustomAlert("Import Error", "Invalid file: The file content is not a valid JSON document.", "fa-solid fa-circle-exclamation", "#ef4444");
       }
     };
     reader.readAsText(file);
@@ -497,7 +497,7 @@ function initZoomAndUtilityControls() {
       if (!file) return;
 
       if (!file.name.toLowerCase().endsWith('.pdf')) {
-        alert("Error: Only PDF files (.pdf) are supported. If you want to load a JSON backup, please use 'Import JSON' instead.");
+        await showCustomAlert("Error", "Error: Only PDF files (.pdf) are supported. If you want to load a JSON backup, please use 'Import JSON' instead.", "fa-solid fa-circle-exclamation", "#ef4444");
         fileImportPDF.value = "";
         return;
       }
@@ -511,15 +511,15 @@ function initZoomAndUtilityControls() {
         const text = await extractTextFromPDF(file);
         const parsedData = parseResumeText(text);
         
-        if (confirm("We extracted your details from the PDF. Would you like to load this data into the editor? This will overwrite your current draft.")) {
+        if (await showCustomConfirm("Import PDF", "We extracted your details from the PDF. Would you like to load this data into the editor? This will overwrite your current draft.", "fa-solid fa-file-pdf", "#3b82f6")) {
           resumeData = parsedData;
           saveState();
           renderAllForms();
-          alert("Resume successfully parsed and imported from PDF!");
+          await showCustomAlert("Success", "Resume successfully parsed and imported from PDF!", "fa-solid fa-circle-check", "#10b981");
         }
       } catch (err) {
         console.error("PDF Parsing Error: ", err);
-        alert("Failed to parse PDF: " + err.message + "\n\nNote: PDF parsing requires a clear text layer in the PDF. Scanned image PDFs cannot be parsed directly.");
+        await showCustomAlert("Error", "Failed to parse PDF: " + err.message + "\n\nNote: PDF parsing requires a clear text layer in the PDF. Scanned image PDFs cannot be parsed directly.", "fa-solid fa-circle-exclamation", "#ef4444");
       } finally {
         if (statusInd) {
           statusInd.innerHTML = '<i class="fa-solid fa-arrows-spin fa-spin"></i> Live Sync Active';
@@ -674,8 +674,8 @@ function renderEducationForm() {
         saveState();
       });
     } else if (btn.classList.contains("btn-remove-item")) {
-      btn.addEventListener("click", () => {
-        if(confirm("Delete this education entry?")){
+      btn.addEventListener("click", async () => {
+        if(await showCustomConfirm("Delete Education", "Delete this education entry?")){
           resumeData.education.splice(idx, 1);
           renderEducationForm();
           saveState();
@@ -815,8 +815,8 @@ function renderExperienceForm() {
         saveState();
       });
     } else if (btn.classList.contains("btn-remove-item")) {
-      btn.addEventListener("click", () => {
-        if(confirm("Delete this experience entry?")){
+      btn.addEventListener("click", async () => {
+        if(await showCustomConfirm("Delete Experience", "Delete this experience entry?")){
           resumeData.experience.splice(idx, 1);
           renderExperienceForm();
           saveState();
@@ -884,8 +884,8 @@ function renderProjectsForm() {
         saveState();
       });
     } else if (btn.classList.contains("btn-remove-item")) {
-      btn.addEventListener("click", () => {
-        if(confirm("Delete this project entry?")){
+      btn.addEventListener("click", async () => {
+        if(await showCustomConfirm("Delete Project", "Delete this project entry?")){
           resumeData.projects.splice(idx, 1);
           renderProjectsForm();
           saveState();
@@ -953,8 +953,8 @@ function renderExtracurricularForm() {
         saveState();
       });
     } else if (btn.classList.contains("btn-remove-item")) {
-      btn.addEventListener("click", () => {
-        if(confirm("Delete this entry?")){
+      btn.addEventListener("click", async () => {
+        if(await showCustomConfirm("Delete Entry", "Delete this entry?")){
           resumeData.extracurricular.splice(idx, 1);
           renderExtracurricularForm();
           saveState();
@@ -1010,8 +1010,8 @@ function renderCertificationsForm() {
         saveState();
       });
     } else if (btn.classList.contains("btn-remove-item")) {
-      btn.addEventListener("click", () => {
-        if(confirm("Delete this certification?")){
+      btn.addEventListener("click", async () => {
+        if(await showCustomConfirm("Delete Certification", "Delete this certification?")){
           resumeData.certifications.splice(idx, 1);
           renderCertificationsForm();
           saveState();
@@ -1355,7 +1355,47 @@ async function extractTextFromPDF(file) {
   return fullText;
 }
 
+function cleanPdfText(text) {
+  // 1. Specific corrections for Bharti Airtel (run before general rules)
+  text = text.replace(/\bBhar\s+[XP]\s+Airtel\b/gi, "Bharti Airtel");
+  text = text.replace(/\bBhar\s+[XP]\b/gi, "Bharti");
+  
+  // 2. Clean 'till' ligature decoded as 'M II' or 'MII' (run before general rules)
+  text = text.replace(/\bM\s+II\b/g, "till");
+  text = text.replace(/\bMII\b/g, "till");
+  
+  // 3. Reconstruct 'ti' ligatures read as standalone M, X, or P (with spaces around)
+  // Use lookahead to handle consecutive occurrences like func M onali M es -> functionalities
+  text = text.replace(/\b([a-zA-Z]+)\s+[MXP]\s+(?=[a-zA-Z]+)/gi, "$1ti");
+  
+  // 4. Clean 'fi' ligatures with spaces: e.g. "Quali fi ed" -> "Qualified"
+  text = text.replace(/\b([a-zA-Z]+)\s+fi\s+(?=[a-zA-Z]+)/gi, "$1fi");
+  
+  // 5. Clean 'fl' ligatures with spaces:
+  // 1. Word starts with fl: "fl ights" -> "flights"
+  text = text.replace(/\bfl\s+(?=[a-zA-Z]+)/gi, "fl");
+  // 2. Middle of word fl: "air fl ow" -> "airflow"
+  text = text.replace(/\b([a-zA-Z]+)\s+fl\s+(?=[a-zA-Z]+)/gi, "$1fl");
+  
+  // Clean double spaces
+  text = text.replace(/ +/g, " ");
+  
+  return text;
+}
+
+function isLikelyProjectTitle(line) {
+  if (line.length > 40) return false;
+  // Must start with an uppercase letter or number
+  if (!/^[A-Z0-9]/.test(line)) return false;
+  // Shouldn't end with typical sentence punctuation
+  if (line.endsWith(",") || line.endsWith(".") || line.endsWith(";")) return false;
+  // Shouldn't contain typical description verbs
+  if (/\b(built|developed|created|designed|implemented|worked|using|with)\b/i.test(line)) return false;
+  return true;
+}
+
 function parseResumeText(text) {
+  text = cleanPdfText(text);
   const lines = text.split("\n").map(l => l.trim()).filter(l => l.length > 0);
   
   const data = {
@@ -1476,7 +1516,7 @@ function parseResumeText(text) {
       let inst = l;
       let dur = "08 2020 – 05 2024";
       // Extract dates
-      const dateMatch = l.match(/\d{2}\s+\d{4}\s*[-–]\s*d{2}\s+\d{4}/) || l.match(/\d{4}\s*[-–]\s*\d{4}/) || l.match(/\d{2}\s+\d{4}\s*–\s*\d{2}\s+\d{4}/);
+      const dateMatch = l.match(/\d{2}\s+\d{4}\s*[-–]\s*\d{2}\s+\d{4}/) || l.match(/\d{4}\s*[-–]\s*\d{4}/) || l.match(/\d{2}\s+\d{4}\s*–\s*\d{2}\s+\d{4}/);
       if (dateMatch) {
         dur = dateMatch[0];
         inst = l.replace(dur, "").trim();
@@ -1488,10 +1528,16 @@ function parseResumeText(text) {
         location: "Location"
       };
     } else if (currentEdu) {
-      if (l.toLowerCase().includes("cgpa") || l.toLowerCase().includes("percentage") || l.toLowerCase().includes("board") || l.toLowerCase().includes("b.tech") || l.toLowerCase().includes("btech") || l.toLowerCase().includes("class")) {
-        currentEdu.degree = l;
-      } else if (l.includes(",") && (l.includes("India") || l.includes("UP") || l.includes("Haryana") || l.includes("USA") || l.includes("Noida") || l.includes("Gurugram"))) {
-        currentEdu.location = l;
+      const locMatch = l.match(/\b(Greater Noida|Gurugram|Pune|Hyderabad|Ggn|Ggurugram)\b.*/i);
+      let degreeText = l;
+      if (locMatch) {
+        currentEdu.location = locMatch[0].trim();
+        degreeText = l.replace(locMatch[0], "").trim().replace(/[-—,\s]+$/, "");
+      }
+      
+      // If this line matches typical degree info, or location matched, set it
+      if (locMatch || l.toLowerCase().includes("cgpa") || l.toLowerCase().includes("percentage") || l.toLowerCase().includes("board") || l.toLowerCase().includes("b.tech") || l.toLowerCase().includes("btech") || l.toLowerCase().includes("class")) {
+        currentEdu.degree = degreeText;
       } else {
         currentEdu.degree = l;
       }
@@ -1514,41 +1560,55 @@ function parseResumeText(text) {
 
   // 3. Parse Projects
   const projectsLines = getSectionContent(projectsIdx, getNextSectionIdx("projects"));
-  for (let i = 0; i < projectsLines.length; i++) {
-    const l = projectsLines[i];
-    if (l.includes("•")) {
-      const parts = l.split("•");
-      data.projects.push({
-        name: parts[0].trim(),
-        description: parts.slice(1).join("•").trim()
-      });
-    } else if (l.includes(" - ") || l.includes(" — ")) {
-      const sep = l.includes(" - ") ? " - " : " — ";
-      const parts = l.split(sep);
-      data.projects.push({
-        name: parts[0].trim(),
-        description: parts.slice(1).join(sep).trim()
-      });
-    } else if (l.length < 40) {
-      data.projects.push({ name: l, description: "" });
-    } else if (data.projects.length > 0) {
-      data.projects[data.projects.length - 1].description += " " + l.replace("•", "").trim();
+  let currentProj = null;
+  projectsLines.forEach(l => {
+    const hasBullet = l.includes("•") || l.startsWith("-") || l.startsWith("*");
+    
+    let isNew = false;
+    let name = "";
+    let desc = "";
+    
+    if (hasBullet) {
+      const parts = l.split(/[•\-*]/);
+      const before = parts[0].trim();
+      if (before && isLikelyProjectTitle(before)) {
+        isNew = true;
+        name = before;
+        const firstBulletIdx = l.search(/[•\-*]/);
+        desc = l.substring(firstBulletIdx + 1).trim();
+      }
+    } else {
+      if (isLikelyProjectTitle(l)) {
+        isNew = true;
+        name = l;
+      }
     }
-  }
+    
+    if (isNew) {
+      if (currentProj) data.projects.push(currentProj);
+      currentProj = { name: name, description: desc };
+    } else if (currentProj) {
+      const cleaned = l.replace(/^[•\-*]\s*/, "").trim();
+      if (cleaned) {
+        currentProj.description += (currentProj.description ? " " : "") + cleaned;
+      }
+    }
+  });
+  if (currentProj) data.projects.push(currentProj);
 
   // 4. Parse Experience
   const expLines = getSectionContent(expIdx, getNextSectionIdx("exp"));
   let currentExp = null;
+  
   expLines.forEach(l => {
     const hasDate = l.match(/\d{2}\s+\d{4}/) || l.includes("ongoing") || l.includes("Present") || l.includes("–") || l.includes("-") || l.match(/\d{4}/);
-    const isRoleOrCompany = l.length < 60 && !l.includes("•") && !l.startsWith("-") && !l.startsWith("*");
+    const isCompanyLine = l.length < 60 && !l.includes("•") && !l.startsWith("-") && !l.startsWith("*") && hasDate;
     
-    // Check for inline bullet
     const bulletIdx = l.indexOf("•");
     const beforeBullet = bulletIdx === -1 ? l : l.substring(0, bulletIdx).trim();
     const afterBullet = bulletIdx === -1 ? "" : l.substring(bulletIdx + 1).trim();
-
-    if (hasDate && isRoleOrCompany) {
+    
+    if (isCompanyLine) {
       if (currentExp) data.experience.push(currentExp);
       
       let comp = beforeBullet;
@@ -1558,6 +1618,7 @@ function parseResumeText(text) {
         dur = dateMatch[0];
         comp = beforeBullet.replace(dur, "").trim();
       }
+      
       currentExp = {
         company: comp,
         role: "Role Title",
@@ -1565,42 +1626,56 @@ function parseResumeText(text) {
         location: "Location",
         highlights: []
       };
+      
       if (afterBullet) {
-        currentExp.highlights.push(afterBullet);
+        const bullets = afterBullet.split("•").map(b => b.trim()).filter(b => b.length > 0);
+        currentExp.highlights.push(...bullets);
       }
     } else if (currentExp) {
       if (bulletIdx !== -1) {
-        if (beforeBullet.toLowerCase().includes("developer") || beforeBullet.toLowerCase().includes("intern") || beforeBullet.toLowerCase().includes("engineer") || beforeBullet.toLowerCase().includes("consultant")) {
+        // Line has a bullet point
+        if (currentExp.highlights.length === 0 && beforeBullet) {
           let roleText = beforeBullet;
-          if (beforeBullet.includes(",") || beforeBullet.includes("  ")) {
-            const parts = beforeBullet.split(/,|\s{2,}/);
-            roleText = parts[0].trim();
-            currentExp.location = parts.slice(1).join(", ").trim();
+          const locMatch = beforeBullet.match(/\b(Greater Noida|Gurugram|Pune|Hyderabad|Ggn|Ggurugram)\b.*/i);
+          if (locMatch) {
+            currentExp.location = locMatch[0].trim();
+            roleText = beforeBullet.replace(locMatch[0], "").trim().replace(/[-—,\s]+$/, "");
           }
-          currentExp.role = roleText;
-        } else if (beforeBullet.length > 0 && beforeBullet.includes(",")) {
-          currentExp.location = beforeBullet;
-        } else if (beforeBullet.length > 0) {
-          currentExp.highlights.push(beforeBullet);
+          if (roleText && (roleText.toLowerCase().includes("developer") || roleText.toLowerCase().includes("intern") || roleText.toLowerCase().includes("engineer") || roleText.toLowerCase().includes("consultant") || roleText.toLowerCase().includes("analyst"))) {
+            currentExp.role = roleText;
+          }
         }
-
+        
         if (afterBullet) {
           const bullets = afterBullet.split("•").map(b => b.trim()).filter(b => b.length > 0);
           currentExp.highlights.push(...bullets);
         }
       } else {
-        if (l.toLowerCase().includes("developer") || l.toLowerCase().includes("intern") || l.toLowerCase().includes("engineer") || l.toLowerCase().includes("consultant")) {
+        // Line has no bullet point
+        const locMatch = l.match(/\b(Greater Noida|Gurugram|Pune|Hyderabad|Ggn|Ggurugram)\b.*/i);
+        const hasRoleKeyword = l.toLowerCase().includes("developer") || l.toLowerCase().includes("intern") || l.toLowerCase().includes("engineer") || l.toLowerCase().includes("consultant") || l.toLowerCase().includes("analyst");
+        
+        if (currentExp.highlights.length === 0 && (locMatch || hasRoleKeyword) && l.length < 60) {
           let roleText = l;
-          if (l.includes(",") || l.includes("  ")) {
-            const parts = l.split(/,|\s{2,}/);
-            roleText = parts[0].trim();
-            currentExp.location = parts.slice(1).join(", ").trim();
+          if (locMatch) {
+            currentExp.location = locMatch[0].trim();
+            roleText = l.replace(locMatch[0], "").trim().replace(/[-—,\s]+$/, "");
           }
-          currentExp.role = roleText;
-        } else if (l.includes(",") && (l.includes("TW") || l.includes("India") || l.includes("Autodesk") || l.includes("Airtel") || l.includes("Ggn") || l.includes("Pune") || l.includes("Hyderabad"))) {
-          currentExp.location = l;
+          if (roleText && hasRoleKeyword) {
+            currentExp.role = roleText;
+          } else if (roleText && (!currentExp.role || currentExp.role === "Role Title")) {
+            currentExp.role = roleText;
+          }
         } else {
-          currentExp.highlights.push(l);
+          // Highlight continuation
+          const cleaned = l.replace(/^[•\-*]\s*/, "").trim();
+          if (cleaned) {
+            if (currentExp.highlights.length > 0) {
+              currentExp.highlights[currentExp.highlights.length - 1] += " " + cleaned;
+            } else {
+              currentExp.highlights.push(cleaned);
+            }
+          }
         }
       }
     }
@@ -1640,3 +1715,178 @@ function parseResumeText(text) {
 
   return data;
 }
+
+function showCustomAlert(title, message, iconClass = "fa-solid fa-circle-info", color = "#3b82f6") {
+  return new Promise((resolve) => {
+    const backdrop = document.getElementById("customDialogContainer");
+    const titleEl = document.getElementById("dialogTitle");
+    const msgEl = document.getElementById("dialogMessage");
+    const iconEl = document.getElementById("dialogIcon");
+    const headerEl = backdrop.querySelector(".custom-dialog-header");
+    const btnCancel = document.getElementById("dialogBtnCancel");
+    const btnConfirm = document.getElementById("dialogBtnConfirm");
+
+    titleEl.textContent = title;
+    msgEl.innerHTML = message.replace(/\n/g, "<br>");
+    iconEl.className = iconClass;
+    headerEl.style.color = color;
+    btnConfirm.style.background = `linear-gradient(135deg, ${color} 0%, ${adjustColorBrightness(color, -20)} 100%)`;
+
+    btnCancel.style.display = "none";
+    btnConfirm.textContent = "OK";
+    backdrop.style.display = "flex";
+
+    function onConfirm() {
+      cleanup();
+      resolve();
+    }
+
+    function cleanup() {
+      btnConfirm.removeEventListener("click", onConfirm);
+      backdrop.style.display = "none";
+    }
+
+    btnConfirm.addEventListener("click", onConfirm);
+  });
+}
+
+function showCustomConfirm(title, message, iconClass = "fa-solid fa-circle-question", color = "#eab308") {
+  return new Promise((resolve) => {
+    const backdrop = document.getElementById("customDialogContainer");
+    const titleEl = document.getElementById("dialogTitle");
+    const msgEl = document.getElementById("dialogMessage");
+    const iconEl = document.getElementById("dialogIcon");
+    const headerEl = backdrop.querySelector(".custom-dialog-header");
+    const btnCancel = document.getElementById("dialogBtnCancel");
+    const btnConfirm = document.getElementById("dialogBtnConfirm");
+
+    titleEl.textContent = title;
+    msgEl.innerHTML = message.replace(/\n/g, "<br>");
+    iconEl.className = iconClass;
+    headerEl.style.color = color;
+    btnConfirm.style.background = `linear-gradient(135deg, ${color} 0%, ${adjustColorBrightness(color, -20)} 100%)`;
+
+    btnCancel.style.display = "block";
+    btnConfirm.textContent = "Yes, Proceed";
+    backdrop.style.display = "flex";
+
+    function onConfirm() {
+      cleanup();
+      resolve(true);
+    }
+
+    function onCancel() {
+      cleanup();
+      resolve(false);
+    }
+
+    function cleanup() {
+      btnConfirm.removeEventListener("click", onConfirm);
+      btnCancel.removeEventListener("click", onCancel);
+      backdrop.style.display = "none";
+    }
+
+    btnConfirm.addEventListener("click", onConfirm);
+    btnCancel.addEventListener("click", onCancel);
+  });
+}
+
+function adjustColorBrightness(hex, percent) {
+  let R = parseInt(hex.substring(1, 3), 16);
+  let G = parseInt(hex.substring(3, 5), 16);
+  let B = parseInt(hex.substring(5, 7), 16);
+
+  R = parseInt(R * (100 + percent) / 100);
+  G = parseInt(G * (100 + percent) / 100);
+  B = parseInt(B * (100 + percent) / 100);
+
+  R = (R < 255) ? R : 255;
+  G = (G < 255) ? G : 255;
+  B = (B < 255) ? B : 255;
+
+  R = (R > 0) ? R : 0;
+  G = (G > 0) ? G : 0;
+  B = (B > 0) ? B : 0;
+
+  const rHex = R.toString(16).padStart(2, '0');
+  const gHex = G.toString(16).padStart(2, '0');
+  const bHex = B.toString(16).padStart(2, '0');
+
+  return "#" + rHex + gHex + bHex;
+}
+
+async function triggerTestPDFImport() {
+  const statusInd = document.querySelector(".status-indicator");
+  if (statusInd) {
+    statusInd.innerHTML = '<i class="fa-solid fa-spinner fa-spin"></i> Loading test PDF...';
+  }
+  
+  try {
+    const res = await fetch("test_pdf_base64.json");
+    const data = await res.json();
+    const binaryString = atob(data.base64);
+    const len = binaryString.length;
+    const bytes = new Uint8Array(len);
+    for (let i = 0; i < len; i++) {
+      bytes[i] = binaryString.charCodeAt(i);
+    }
+    const arrayBuffer = bytes.buffer;
+    
+    if (statusInd) {
+      statusInd.innerHTML = '<i class="fa-solid fa-spinner fa-spin"></i> Parsing test PDF...';
+    }
+    
+    const pdf = await pdfjsLib.getDocument({ data: arrayBuffer }).promise;
+    let fullText = "";
+    for (let i = 1; i <= pdf.numPages; i++) {
+      const page = await pdf.getPage(i);
+      const textContent = await page.getTextContent();
+      const items = textContent.items;
+      const linesMap = {};
+      items.forEach(item => {
+        if (!item.str.trim()) return;
+        const x = item.transform[4];
+        const y = item.transform[5];
+        let foundLineYStr = null;
+        for (const lineYStr in linesMap) {
+          const lineY = parseFloat(lineYStr);
+          if (Math.abs(lineY - y) < 5) {
+            foundLineYStr = lineYStr;
+            break;
+          }
+        }
+        if (foundLineYStr !== null) {
+          linesMap[foundLineYStr].push({ text: item.str, x: x });
+        } else {
+          linesMap[y] = [{ text: item.str, x: x }];
+        }
+      });
+      const sortedYKeys = Object.keys(linesMap).map(Number).sort((a, b) => b - a);
+      let pageText = "";
+      sortedYKeys.forEach(yKey => {
+        const lineItems = linesMap[yKey];
+        lineItems.sort((a, b) => a.x - b.x);
+        const lineText = lineItems.map(item => item.text).join(" ");
+        pageText += lineText + "\n";
+      });
+      fullText += pageText + "\n";
+    }
+    
+    const parsedData = parseResumeText(fullText);
+    if (await showCustomConfirm("Import PDF", "We extracted your details from the PDF. Would you like to load this data into the editor? This will overwrite your current draft.", "fa-solid fa-file-pdf", "#3b82f6")) {
+      resumeData = parsedData;
+      saveState();
+      renderAllForms();
+      await showCustomAlert("Success", "Resume successfully parsed and imported from PDF!", "fa-solid fa-circle-check", "#10b981");
+    }
+  } catch (err) {
+    console.error("PDF Parsing Error: ", err);
+    await showCustomAlert("Error", "Failed to parse PDF: " + err.message, "fa-solid fa-circle-exclamation", "#ef4444");
+  } finally {
+    if (statusInd) {
+      statusInd.innerHTML = '<i class="fa-solid fa-arrows-spin fa-spin"></i> Live Sync Active';
+    }
+  }
+}
+
+window.triggerTestPDFImport = triggerTestPDFImport;
