@@ -706,15 +706,21 @@ input[type="range"]::-webkit-slider-thumb:hover {
 .resume-paper {
   background-color: #ffffff;
   width: 210mm; /* A4 standard width */
-  min-height: 297mm; /* A4 standard height */
-  padding: 20mm;
+  height: 297mm; /* A4 standard height */
+  padding: 12mm;
   box-shadow: 0 10px 25px -5px rgba(0, 0, 0, 0.1), 0 8px 10px -6px rgba(0, 0, 0, 0.1), 0 1px 3px 0 rgba(0, 0, 0, 0.05);
   box-sizing: border-box;
   color: #1e293b;
-  transform-origin: top center;
-  transition: transform 0.2s ease-out;
   word-wrap: break-word;
   position: relative;
+  overflow: hidden;
+}
+
+.resume-content-wrapper {
+  width: 100%;
+  box-sizing: border-box;
+  transform-origin: top center;
+  transition: transform 0.15s ease-out;
 }
 
 /* Interactivity: Clicking resume elements transitions focus */
@@ -860,38 +866,42 @@ body.sidebar-collapsed .toggle-sidebar-btn i {
   }
 
   .preview-panel {
-    width: 100% !important;
-    height: auto !important;
-    position: static !important;
+    width: 210mm !important;
+    height: 297mm !important;
+    position: relative !important;
     background-color: #ffffff !important;
-    overflow: visible !important;
+    overflow: hidden !important;
     display: block !important;
   }
 
   .canvas-wrapper {
     padding: 0 !important;
+    margin: 0 !important;
     background-color: #ffffff !important;
     overflow: visible !important;
     display: block !important;
+    width: 210mm !important;
+    height: 297mm !important;
+    position: relative !important;
   }
 
   .resume-paper {
-    transform: scale(1) !important;
     margin: 0 !important;
-    padding: var(--print-margin, 20mm) !important;
+    position: absolute !important;
+    left: 0 !important;
+    top: 0 !important;
+    padding: var(--print-margin, 12mm) !important;
     box-shadow: none !important;
-    width: 100% !important;
-    min-height: 0 !important;
-    height: auto !important;
+    width: 210mm !important;
+    height: 297mm !important;
     box-sizing: border-box !important;
-    page-break-after: avoid;
-    page-break-before: avoid;
-    overflow: visible !important;
+    overflow: hidden !important;
+    background-color: #ffffff !important;
   }
-  
-  /* Prevent page breaks inside critical sections */
-  section.resume-section {
-    page-break-inside: avoid !important;
+
+  .resume-content-wrapper {
+    width: 100% !important;
+    box-sizing: border-box !important;
   }
 
   /* Force background printing for text accents and lines */
@@ -900,7 +910,7 @@ body.sidebar-collapsed .toggle-sidebar-btn i {
     print-color-adjust: exact !important;
   }
   
-  /* Set document margin rules */
+  /* Single A4 page, no browser margins */
   @page {
     size: A4 portrait;
     margin: 0;
@@ -1283,4 +1293,142 @@ body.sidebar-collapsed .toggle-sidebar-btn i {
   min-width: 34px;
   text-align: right;
   transition: color 0.4s;
+}
+
+/* Drag and Drop in Resume Preview */
+.preview-section {
+  position: relative;
+  transition: all 0.2s ease;
+  border: 1px dashed transparent;
+  border-radius: var(--border-radius-sm);
+  padding: 4px;
+  margin-bottom: var(--section-spacing, 15px);
+  cursor: grab;
+}
+
+.preview-section:hover {
+  background-color: rgba(var(--accent-color-rgb), 0.04);
+  border-color: rgba(var(--accent-color-rgb), 0.2);
+}
+
+.preview-section.preview-dragging {
+  opacity: 0.4;
+  border-color: var(--accent-color) !important;
+  background-color: rgba(var(--accent-color-rgb), 0.1) !important;
+  box-shadow: 0 4px 12px rgba(0, 0, 0, 0.1);
+}
+
+/* Float visual drag handle on hover in preview */
+.preview-section-handle {
+  position: absolute;
+  top: 4px;
+  right: 4px;
+  background-color: var(--accent-color);
+  color: #ffffff;
+  padding: 2px 6px;
+  border-radius: var(--border-radius-sm);
+  font-size: 0.75rem;
+  opacity: 0;
+  pointer-events: none;
+  transition: opacity 0.2s ease;
+  z-index: 10;
+  display: flex;
+  align-items: center;
+  gap: 4px;
+}
+
+.preview-section:hover .preview-section-handle {
+  opacity: 0.9;
+}
+
+/* Hide handles and borders in print */
+@media print {
+  .preview-section {
+    border: none !important;
+    background-color: transparent !important;
+    padding: 0 !important;
+    cursor: default !important;
+  }
+  .preview-section-handle {
+    display: none !important;
+  }
+}
+
+/* Label and formatting toolbar layout */
+.label-with-format {
+  display: flex;
+  justify-content: space-between;
+  align-items: center;
+  margin-bottom: 6px;
+}
+
+.label-with-format label {
+  margin-bottom: 0 !important;
+}
+
+.format-toolbar {
+  display: flex;
+  gap: 2px;
+  background-color: var(--background-dark-secondary);
+  border: 1px solid var(--border-color-dark);
+  border-radius: 4px;
+  padding: 1px;
+}
+
+.format-toolbar button {
+  background: transparent;
+  border: none;
+  color: var(--text-dark-primary);
+  font-size: 0.68rem;
+  padding: 1px 5px;
+  border-radius: 2px;
+  cursor: pointer;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  transition: all 0.15s ease;
+  min-width: 18px;
+  height: 18px;
+}
+
+.format-toolbar button:hover {
+  background-color: rgba(255, 255, 255, 0.08);
+  color: var(--accent-color);
+}
+
+/* Mini toolbar for highlight rows */
+.highlight-input-wrapper {
+  position: relative;
+  flex: 1;
+}
+
+.highlight-input-wrapper input {
+  width: 100%;
+  padding-right: 92px !important; /* Make room for the floating mini toolbar */
+}
+
+.mini-toolbar {
+  position: absolute;
+  right: 6px;
+  top: 50%;
+  transform: translateY(-50%);
+  border: none;
+  background: transparent;
+  gap: 1px;
+  padding: 0;
+  z-index: 5;
+  opacity: 0.4;
+  transition: opacity 0.2s ease;
+}
+
+.highlight-input-wrapper:focus-within .mini-toolbar,
+.highlight-input-wrapper:hover .mini-toolbar {
+  opacity: 1;
+}
+
+.mini-toolbar button {
+  font-size: 0.65rem;
+  height: 16px;
+  min-width: 16px;
+  padding: 0;
 }

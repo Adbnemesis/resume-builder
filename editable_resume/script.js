@@ -22,64 +22,104 @@ const DEFAULT_RESUME_DATA = {
       url: "https://hackerrank.com/yourprofile"
     }
   },
-  education: [
+  sections: [
     {
-      institution: "Your University Name",
-      degree: "Degree and Branch (e.g. B.Tech Computer Science) - CGPA - 9.00",
-      duration: "08 2020 – 05 2024",
-      location: "City, State, Country"
+      id: "education",
+      name: "Education",
+      type: "list",
+      items: [
+        {
+          title: "Your University Name",
+          subtitle: "Degree and Branch (e.g. B.Tech Computer Science) - CGPA - 9.00",
+          duration: "08 2020 – 05 2024",
+          location: "City, State, Country",
+          highlights: []
+        },
+        {
+          title: "Your School Name",
+          subtitle: "12th CBSE Board - Percentage - 95%",
+          duration: "05 2019 – 04 2020",
+          location: "City, State, Country",
+          highlights: []
+        }
+      ]
     },
     {
-      institution: "Your School Name",
-      degree: "12th CBSE Board - Percentage - 95%",
-      duration: "05 2019 – 04 2020",
-      location: "City, State, Country"
-    }
-  ],
-  skills: [
-    { id: "coursework", label: "Coursework", tags: ["Data Structures and Algorithms", "Operating Systems", "Object Oriented Programming", "Database Systems"] },
-    { id: "frameworks", label: "Frameworks/Languages", tags: ["C++", "Java", "Python", "HTML", "CSS", "JavaScript", "React", "NodeJS", "SQL", "Docker"] }
-  ],
-  projects: [
+      id: "skills",
+      name: "Skills",
+      type: "tags",
+      categories: [
+        { id: "coursework", label: "Coursework", tags: ["Data Structures and Algorithms", "Operating Systems", "Object Oriented Programming", "Database Systems"] },
+        { id: "frameworks", label: "Frameworks/Languages", tags: ["C++", "Java", "Python", "HTML", "CSS", "JavaScript", "React", "NodeJS", "SQL", "Docker"] }
+      ]
+    },
     {
-      name: "Your Project Title",
-      description: "Describe your project key achievements, tech stack used, and key features. E.g. Built a responsive web app using React and NodeJS."
-    }
-  ],
-  experience: [
+      id: "projects",
+      name: "Projects",
+      type: "list",
+      items: [
+        {
+          title: "Your Project Title",
+          subtitle: "",
+          duration: "",
+          location: "",
+          highlights: ["Describe your project key achievements, tech stack used, and key features. E.g. Built a responsive web app using React and NodeJS."]
+        }
+      ]
+    },
     {
-      company: "Your Company Name",
-      role: "Software Developer Intern",
-      duration: "01 2024 – 06 2024",
-      location: "City, State",
-      highlights: [
-        "Detail your primary job roles and responsibilities.",
-        "Include metrics if possible: e.g. Reduced processing latencies by 30% using multi-threading in C++.",
-        "Discuss team collaboration and tool integrations."
+      id: "experience",
+      name: "Experience",
+      type: "list",
+      items: [
+        {
+          title: "Your Company Name",
+          subtitle: "Software Developer Intern",
+          duration: "01 2024 – 06 2024",
+          location: "City, State",
+          highlights: [
+            "Detail your primary job roles and responsibilities.",
+            "Include metrics if possible: e.g. Reduced processing latencies by 30% using multi-threading in C++.",
+            "Discuss team collaboration and tool integrations."
+          ]
+        }
+      ]
+    },
+    {
+      id: "extracurricular",
+      name: "Extracurricular",
+      type: "list",
+      items: [
+        {
+          title: "Hackathon / Competition Name",
+          subtitle: "Secured 1st/2nd/3rd rank in hackathons or coding contests.",
+          duration: "",
+          location: "",
+          highlights: []
+        }
+      ]
+    },
+    {
+      id: "certifications",
+      name: "Certifications",
+      type: "list",
+      items: [
+        { title: "Web Development Bootcamp", subtitle: "", duration: "", location: "", highlights: [] },
+        { title: "Cloud Practitioner Certificate", subtitle: "", duration: "", location: "", highlights: [] }
       ]
     }
-  ],
-  extracurricular: [
-    {
-      title: "Hackathon / Competition Name",
-      description: "Secured 1st/2nd/3rd rank in hackathons or coding contests."
-    }
-  ],
-  certifications: [
-    "Web Development Bootcamp",
-    "Cloud Practitioner Certificate"
   ]
 };
 
 // DEFAULT DESIGN SETTINGS
 const DEFAULT_DESIGN_DATA = {
-  template: "modern",
+  template: "classic",
   font: "font-inter",
   accentColor: "#1a56db",
-  margin: "20",
-  fontSize: "12",
-  spacing: "15",
-  lineHeight: "1.3",
+  margin: "12",
+  fontSize: "11",
+  spacing: "8",
+  lineHeight: "1.2",
   sectionOrder: ["education", "skills", "projects", "experience", "extracurricular", "certifications"],
   sectionVisibility: {
     education: true,
@@ -113,6 +153,131 @@ document.addEventListener("DOMContentLoaded", async () => {
 });
 
 // State Storage Management
+// State Storage Management
+function migrateToDynamicSchema(data) {
+  if (!data) return null;
+  if (data.sections && Array.isArray(data.sections)) return data; // Already migrated!
+
+  const sections = [];
+
+  // Migrate Education
+  if (data.education && Array.isArray(data.education)) {
+    sections.push({
+      id: "education",
+      name: "Education",
+      type: "list",
+      items: data.education.map(edu => ({
+        title: edu.institution || "",
+        subtitle: edu.degree || "",
+        duration: edu.duration || "",
+        location: edu.location || "",
+        highlights: edu.highlights || []
+      }))
+    });
+  }
+
+  // Migrate Skills
+  if (data.skills) {
+    let categories = [];
+    if (Array.isArray(data.skills)) {
+      categories = data.skills;
+    } else {
+      categories = [
+        { id: "coursework", label: "Coursework", tags: data.skills.coursework || [] },
+        { id: "frameworks", label: "Frameworks/Languages", tags: data.skills.languagesFrameworks || [] }
+      ];
+    }
+    sections.push({
+      id: "skills",
+      name: "Skills",
+      type: "tags",
+      categories: categories
+    });
+  }
+
+  // Migrate Experience
+  if (data.experience && Array.isArray(data.experience)) {
+    sections.push({
+      id: "experience",
+      name: "Experience",
+      type: "list",
+      items: data.experience.map(exp => ({
+        title: exp.company || "",
+        subtitle: exp.role || "",
+        duration: exp.duration || "",
+        location: exp.location || "",
+        highlights: exp.highlights || []
+      }))
+    });
+  }
+
+  // Migrate Projects
+  if (data.projects && Array.isArray(data.projects)) {
+    sections.push({
+      id: "projects",
+      name: "Projects",
+      type: "list",
+      items: data.projects.map(proj => ({
+        title: proj.name || "",
+        subtitle: "",
+        duration: "",
+        location: "",
+        highlights: proj.description ? [proj.description] : (proj.highlights || [])
+      }))
+    });
+  }
+
+  // Migrate Extracurricular
+  if (data.extracurricular && Array.isArray(data.extracurricular)) {
+    sections.push({
+      id: "extracurricular",
+      name: "Extracurricular",
+      type: "list",
+      items: data.extracurricular.map(extra => ({
+        title: extra.title || "",
+        subtitle: "",
+        duration: "",
+        location: "",
+        highlights: extra.description ? [extra.description] : (extra.highlights || [])
+      }))
+    });
+  }
+
+  // Migrate Certifications
+  if (data.certifications && Array.isArray(data.certifications)) {
+    sections.push({
+      id: "certifications",
+      name: "Certifications",
+      type: "list",
+      items: data.certifications.map(cert => {
+        if (typeof cert === "string") {
+          return { title: cert, subtitle: "", duration: "", location: "", highlights: [] };
+        } else {
+          return {
+            title: cert.title || "",
+            subtitle: cert.subtitle || "",
+            duration: cert.duration || "",
+            location: cert.location || "",
+            highlights: cert.highlights || []
+          };
+        }
+      })
+    });
+  }
+
+  data.sections = sections;
+
+  // Clean up old fields
+  delete data.education;
+  delete data.skills;
+  delete data.experience;
+  delete data.projects;
+  delete data.extracurricular;
+  delete data.certifications;
+
+  return data;
+}
+
 async function loadState() {
   const savedResume = localStorage.getItem("resume_builder_data");
   const savedDesign = localStorage.getItem("resume_builder_design");
@@ -142,18 +307,18 @@ async function loadState() {
     resumeData = JSON.parse(JSON.stringify(DEFAULT_RESUME_DATA));
   }
 
-  // Migrate old flat skills format to new array format
-  if (resumeData.skills && !Array.isArray(resumeData.skills)) {
-    resumeData.skills = [
-      { id: "coursework", label: "Coursework", tags: resumeData.skills.coursework || [] },
-      { id: "frameworks", label: "Frameworks/Languages", tags: resumeData.skills.languagesFrameworks || [] }
-    ];
-  }
-  if (!resumeData.skills) resumeData.skills = JSON.parse(JSON.stringify(DEFAULT_RESUME_DATA.skills));
+  // Migrate to dynamic sections schema
+  resumeData = migrateToDynamicSchema(resumeData);
 
   if (savedDesign) {
     try {
       designData = JSON.parse(savedDesign);
+      // Migrate old large defaults to new compact, single-page optimized spacings
+      if (designData.template === "modern") designData.template = "classic";
+      if (designData.margin === "20") designData.margin = "12";
+      if (designData.spacing === "15") designData.spacing = "8";
+      if (designData.fontSize === "12") designData.fontSize = "11";
+      if (designData.lineHeight === "1.3") designData.lineHeight = "1.2";
     } catch(e) {
       designData = { ...DEFAULT_DESIGN_DATA };
     }
@@ -162,8 +327,13 @@ async function loadState() {
   }
 
   // Ensure sectionOrder and sectionVisibility exist (for backward compat)
-  if (!designData.sectionOrder) designData.sectionOrder = [...DEFAULT_DESIGN_DATA.sectionOrder];
-  if (!designData.sectionVisibility) designData.sectionVisibility = { ...DEFAULT_DESIGN_DATA.sectionVisibility };
+  if (!designData.sectionOrder) designData.sectionOrder = resumeData.sections.map(s => s.id);
+  if (!designData.sectionVisibility) {
+    designData.sectionVisibility = {};
+    resumeData.sections.forEach(s => {
+      designData.sectionVisibility[s.id] = true;
+    });
+  }
 }
 
 function saveState() {
@@ -227,64 +397,18 @@ function initFormInputs() {
 
 // Bind add buttons for list inputs
 function initListControls() {
-  document.getElementById("btnAddEducation").addEventListener("click", () => {
-    resumeData.education.push({
-      institution: "New School Name",
-      degree: "B.Tech Computer Science (or similar)",
-      duration: "08 2024 – 05 2028",
-      location: "City, Country"
-    });
-    renderEducationForm();
-    saveState();
-  });
-
-  document.getElementById("btnAddExperience").addEventListener("click", () => {
-    resumeData.experience.push({
-      company: "Company Name",
-      role: "Software Developer",
-      duration: "Start Date – End Date",
-      location: "Office Location",
-      highlights: ["Description of job responsibility or accomplishment."]
-    });
-    renderExperienceForm();
-    saveState();
-  });
-
-  document.getElementById("btnAddProject").addEventListener("click", () => {
-    resumeData.projects.push({
-      name: "Project Title",
-      description: "Brief summary of what was built and technologies used."
-    });
-    renderProjectsForm();
-    saveState();
-  });
-
-  document.getElementById("btnAddExtracurricular").addEventListener("click", () => {
-    resumeData.extracurricular.push({
-      title: "Title / Hackathon",
-      description: "Details on what you accomplished or won."
-    });
-    renderExtracurricularForm();
-    saveState();
-  });
-
-  document.getElementById("btnAddCertification").addEventListener("click", () => {
-    resumeData.certifications.push("New Certificate Title");
-    renderCertificationsForm();
-    saveState();
-  });
-
-  document.getElementById("btnAddSkillCategory").addEventListener("click", () => {
-    if (!Array.isArray(resumeData.skills)) {
-      resumeData.skills = [
-        { id: "coursework", label: "Coursework", tags: resumeData.skills.coursework || [] },
-        { id: "frameworks", label: "Frameworks/Languages", tags: resumeData.skills.languagesFrameworks || [] }
-      ];
+  // Delegate clicks on btnAddSkillCategory
+  document.addEventListener("click", (e) => {
+    const btn = e.target.closest("#btnAddSkillCategory");
+    if (btn) {
+      const skillsSec = resumeData.sections.find(s => s.id === "skills");
+      if (skillsSec) {
+        if (!skillsSec.categories) skillsSec.categories = [];
+        skillsSec.categories.push({ id: `cat_${Date.now()}`, label: "Custom Category", tags: [] });
+        renderSkillsForm();
+        saveState();
+      }
     }
-    const newId = `custom_${Date.now()}`;
-    resumeData.skills.push({ id: newId, label: "Custom Category", tags: [] });
-    renderSkillsForm();
-    saveState();
   });
 }
 
@@ -388,6 +512,40 @@ function initZoomAndUtilityControls() {
     }
   });
 
+  // Create custom section
+  const btnCreateSection = document.getElementById("btnCreateCustomSection");
+  if (btnCreateSection) {
+    btnCreateSection.addEventListener("click", async () => {
+      const name = prompt("Enter a name for your custom section (e.g. Awards, Publications):");
+      if (name && name.trim()) {
+        const secId = "custom_" + Date.now();
+        const cleanName = name.trim();
+        
+        resumeData.sections.push({
+          id: secId,
+          name: cleanName,
+          type: "list",
+          items: []
+        });
+
+        if (!designData.sectionOrder) designData.sectionOrder = resumeData.sections.map(s => s.id);
+        else designData.sectionOrder.push(secId);
+
+        if (!designData.sectionVisibility) designData.sectionVisibility = {};
+        designData.sectionVisibility[secId] = true;
+
+        renderDynamicTabsAndPanels();
+        renderSectionOrderList();
+        saveState();
+
+        setTimeout(() => {
+          const tabBtn = document.querySelector(`.tab-btn[data-tab="${secId}"]`);
+          if (tabBtn) tabBtn.click();
+        }, 100);
+      }
+    });
+  }
+
   // Sidebar toggle
   document.getElementById("btnToggleSidebar").addEventListener("click", () => {
     document.body.classList.toggle("sidebar-collapsed");
@@ -411,9 +569,62 @@ function initZoomAndUtilityControls() {
     }
   });
 
-  // Print button
-  document.getElementById("btnPrint").addEventListener("click", () => {
+  // -------------------------------------------------------
+  // Single-Page Print: auto-scale to fit one A4 page
+  // -------------------------------------------------------
+  function printSinglePage() {
+    const paper = document.getElementById("resumePaper");
+    if (!paper) { window.print(); return; }
+
+    // A4 at 96dpi = 210mm × 297mm = 793.7px × 1122.5px
+    // We use the scrollHeight (full content height) vs A4 height
+    const A4_HEIGHT_PX = 1122; // 297mm at 96dpi
+    const A4_WIDTH_PX  = 794;  // 210mm at 96dpi
+
+    // Temporarily reset any current transform to measure true size
+    const prevTransform = paper.style.transform;
+    paper.style.transform = "scale(1)";
+    paper.style.transformOrigin = "top center";
+
+    const contentH = paper.scrollHeight;
+    const contentW = paper.scrollWidth;
+
+    // Calculate scale to fit within one A4 page
+    const scaleH = A4_HEIGHT_PX / contentH;
+    const scaleW = A4_WIDTH_PX  / contentW;
+    const scale  = Math.min(scaleH, scaleW, 1); // never upscale
+
+    // Restore original transform
+    paper.style.transform = prevTransform;
+
+    // Apply scale via CSS variable (picked up by @media print)
+    document.documentElement.style.setProperty("--print-scale", scale.toFixed(4));
+
+    // Trigger print, then reset after dialog closes
     window.print();
+  }
+
+  document.getElementById("btnPrint").addEventListener("click", printSinglePage);
+
+  // Handle printing events globally (button or Ctrl+P/Cmd+P shortcuts)
+  window.addEventListener("beforeprint", () => {
+    const paper = document.getElementById("resumePaper");
+    if (!paper) return;
+    const A4_HEIGHT_PX = 1122;
+    const A4_WIDTH_PX  = 794;
+    
+    const prevTransform = paper.style.transform;
+    paper.style.transform = "scale(1)";
+    const contentH = paper.scrollHeight;
+    const contentW = paper.scrollWidth;
+    paper.style.transform = prevTransform;
+    
+    const scale = Math.min(A4_HEIGHT_PX / contentH, A4_WIDTH_PX / contentW, 1);
+    document.documentElement.style.setProperty("--print-scale", scale.toFixed(4));
+  });
+
+  window.addEventListener("afterprint", () => {
+    document.documentElement.style.setProperty("--print-scale", "1");
   });
 
   // Reset Button
@@ -470,20 +681,13 @@ function initZoomAndUtilityControls() {
         const parsed = JSON.parse(event.target.result);
         
         // Basic schema validations
-        if (parsed.personal && parsed.education && parsed.skills) {
-          resumeData = parsed;
-          // Migrate old flat skills format to new array format if needed
-          if (!Array.isArray(resumeData.skills)) {
-            resumeData.skills = [
-              { id: "coursework", label: "Coursework", tags: resumeData.skills.coursework || [] },
-              { id: "frameworks", label: "Frameworks/Languages", tags: resumeData.skills.languagesFrameworks || [] }
-            ];
-          }
+        if (parsed.personal && (parsed.education || parsed.sections || parsed.experience)) {
+          resumeData = migrateToDynamicSchema(parsed);
           saveState();
           renderAllForms();
           await showCustomAlert("Import Successful", "Resume data successfully imported!", "fa-solid fa-circle-check", "#10b981");
         } else {
-          await showCustomAlert("Import Failed", "Failed to parse JSON: Missing critical sections (personal, education, skills). Ensure this is a valid JSON backup file exported from this builder.", "fa-solid fa-circle-exclamation", "#ef4444");
+          await showCustomAlert("Import Failed", "Failed to parse JSON: Missing critical sections (personal, sections). Ensure this is a valid JSON backup file exported from this builder.", "fa-solid fa-circle-exclamation", "#ef4444");
         }
       } catch(err) {
         await showCustomAlert("Import Error", "Invalid file: The file content is not a valid JSON document.", "fa-solid fa-circle-exclamation", "#ef4444");
@@ -559,6 +763,90 @@ function escHtml(str) {
   return String(str || '').replace(/&/g,'&amp;').replace(/</g,'&lt;').replace(/>/g,'&gt;').replace(/"/g,'&quot;');
 }
 
+// Helper: Parse markdown formatting (bold, italic, underline, links, headings)
+function parseMarkdown(text) {
+  if (!text) return "";
+  let html = escHtml(text);
+  
+  // Bold: **text** or __text__
+  html = html.replace(/\*\*(.*?)\*\*/g, "<strong>$1</strong>");
+  html = html.replace(/__(.*?)__/g, "<strong>$1</strong>");
+  
+  // Italic: *text* or _text_
+  html = html.replace(/\*(.*?)\*/g, "<em>$1</em>");
+  html = html.replace(/_(.*?)_/g, "<em>$1</em>");
+  
+  // Underline: ~text~
+  html = html.replace(/~(.*?)~/g, "<u>$1</u>");
+  
+  // Headings: ### heading, ## heading, # heading
+  html = html.replace(/^### (.*?)$/gm, "<h3>$1</h3>");
+  html = html.replace(/^## (.*?)$/gm, "<h2>$1</h2>");
+  html = html.replace(/^# (.*?)$/gm, "<h1>$1</h1>");
+  
+  // Links: [text](url)
+  html = html.replace(/\[(.*?)\]\((.*?)\)/g, '<a href="$2" target="_blank" style="color:var(--accent-color);text-decoration:underline;">$1</a>');
+  
+  return html;
+}
+
+// Helper: Apply markdown formatting directly to selection in inputs
+function applyFormatting(input, action) {
+  if (!input) return;
+  const start = input.selectionStart;
+  const end = input.selectionEnd;
+  const val = input.value;
+  const selected = val.substring(start, end);
+
+  let formatted = "";
+  let caretOffset = 0;
+
+  switch (action) {
+    case "bold":
+      formatted = `**${selected || "bold text"}**`;
+      caretOffset = selected ? 0 : 2;
+      break;
+    case "italic":
+      formatted = `*${selected || "italic text"}*`;
+      caretOffset = selected ? 0 : 1;
+      break;
+    case "underline":
+      formatted = `~${selected || "underlined text"}~`;
+      caretOffset = selected ? 0 : 1;
+      break;
+    case "link":
+      const url = prompt("Enter URL:", "https://");
+      if (url === null) return;
+      formatted = `[${selected || "link text"}](${url})`;
+      break;
+  }
+
+  input.value = val.substring(0, start) + formatted + val.substring(end);
+  input.focus();
+  
+  if (selected) {
+    input.setSelectionRange(start + formatted.length, start + formatted.length);
+  } else {
+    const newCursor = start + formatted.length - caretOffset;
+    input.setSelectionRange(newCursor, newCursor);
+  }
+
+  input.dispatchEvent(new Event("input", { bubbles: true }));
+}
+
+// Bind keyboard shortcuts (Ctrl+B, Ctrl+I, Ctrl+U) to all input/textarea fields
+document.addEventListener("keydown", (e) => {
+  if ((e.ctrlKey || e.metaKey) && ["b", "i", "u"].includes(e.key.toLowerCase())) {
+    const active = document.activeElement;
+    if (active && (active.tagName === "INPUT" || active.tagName === "TEXTAREA")) {
+      e.preventDefault();
+      const key = e.key.toLowerCase();
+      const action = key === "b" ? "bold" : key === "i" ? "italic" : "underline";
+      applyFormatting(active, action);
+    }
+  }
+});
+
 // Populate form control values on initial load or reset
 function renderAllForms() {
   // Set personal details
@@ -574,9 +862,6 @@ function renderAllForms() {
   document.getElementById("inputLeetcodeUrl").value = resumeData.personal.leetcode?.url || "";
   document.getElementById("inputHackerrankUsername").value = resumeData.personal.hackerrank?.username || "";
   document.getElementById("inputHackerrankUrl").value = resumeData.personal.hackerrank?.url || "";
-
-  // Skills (tag chip categories)
-  renderSkillsForm();
 
   // Styling inputs
   document.querySelector(`input[name="layoutTemplate"][value="${designData.template}"]`).checked = true;
@@ -595,12 +880,8 @@ function renderAllForms() {
     }
   });
 
-  // Dynamic Lists
-  renderEducationForm();
-  renderExperienceForm();
-  renderProjectsForm();
-  renderExtracurricularForm();
-  renderCertificationsForm();
+  // Render all dynamic tabs and panels
+  renderDynamicTabsAndPanels();
 }
 
 /* ==========================================================================
@@ -620,7 +901,9 @@ function renderSkillsForm() {
   if (!container) return;
   container.innerHTML = "";
 
-  const skillsArr = Array.isArray(resumeData.skills) ? resumeData.skills : [];
+  const skillsSec = resumeData.sections.find(s => s.id === "skills");
+  if (!skillsSec) return;
+  const skillsArr = skillsSec.categories || [];
 
   skillsArr.forEach((cat, catIdx) => {
     const div = document.createElement("div");
@@ -646,7 +929,7 @@ function renderSkillsForm() {
   // Bind label change
   container.querySelectorAll(".skill-cat-label").forEach(inp => {
     inp.addEventListener("input", (e) => {
-      resumeData.skills[+e.target.dataset.idx].label = e.target.value;
+      skillsArr[+e.target.dataset.idx].label = e.target.value;
       saveState();
     });
   });
@@ -655,7 +938,7 @@ function renderSkillsForm() {
   container.querySelectorAll(".skill-cat-delete").forEach(btn => {
     btn.addEventListener("click", (e) => {
       const idx = +btn.dataset.idx;
-      resumeData.skills.splice(idx, 1);
+      skillsArr.splice(idx, 1);
       renderSkillsForm();
       saveState();
     });
@@ -666,7 +949,7 @@ function renderSkillsForm() {
     btn.addEventListener("click", (e) => {
       const ci = +btn.dataset.catidx;
       const ti = +btn.dataset.tidx;
-      resumeData.skills[ci].tags.splice(ti, 1);
+      skillsArr[ci].tags.splice(ti, 1);
       renderSkillsForm();
       saveState();
     });
@@ -679,14 +962,372 @@ function renderSkillsForm() {
         e.preventDefault();
         const val = inp.value.trim().replace(/,$/, "");
         const ci = +inp.dataset.catidx;
-        if (val && !resumeData.skills[ci].tags.includes(val)) {
-          resumeData.skills[ci].tags.push(val);
+        if (val && !skillsArr[ci].tags.includes(val)) {
+          skillsArr[ci].tags.push(val);
           renderSkillsForm();
           saveState();
           // Refocus the input for the same category
           const inputs = document.querySelectorAll(".skill-tag-input");
           if (inputs[ci]) inputs[ci].focus();
         }
+      }
+    });
+  });
+}
+
+function renderDynamicTabsAndPanels() {
+  const tabsContainer = document.getElementById("dynamicTabs");
+  const panelsContainer = document.getElementById("dynamicPanels");
+  if (!tabsContainer || !panelsContainer) return;
+
+  const activeTabBtn = document.querySelector(".editor-tabs .tab-btn.active");
+  const activeTabId = activeTabBtn ? activeTabBtn.dataset.tab : "personal";
+
+  tabsContainer.innerHTML = "";
+  panelsContainer.innerHTML = "";
+
+  function getIconClass(id) {
+    const mapping = {
+      education: "fa-graduation-cap",
+      skills: "fa-screwdriver-wrench",
+      experience: "fa-briefcase",
+      projects: "fa-laptop-code",
+      extracurricular: "fa-award",
+      certifications: "fa-certificate"
+    };
+    return mapping[id] || "fa-folder-open";
+  }
+
+  resumeData.sections.forEach(sec => {
+    const btn = document.createElement("button");
+    btn.className = "tab-btn" + (activeTabId === sec.id ? " active" : "");
+    btn.dataset.tab = sec.id;
+    btn.innerHTML = `<i class="fa-solid ${getIconClass(sec.id)}"></i> ${sec.name}`;
+    tabsContainer.appendChild(btn);
+
+    const panel = document.createElement("section");
+    panel.className = "tab-panel" + (activeTabId === sec.id ? " active" : "");
+    panel.id = `panel-${sec.id}`;
+    panelsContainer.appendChild(panel);
+
+    if (sec.type === "tags") {
+      renderSkillsFormMarkup(panel, sec);
+    } else {
+      renderListFormMarkup(panel, sec);
+    }
+  });
+
+  bindTabNavigationHandlers();
+}
+
+function bindTabNavigationHandlers() {
+  const tabButtons = document.querySelectorAll(".editor-tabs .tab-btn");
+  const panels = document.querySelectorAll(".editor-panels .tab-panel");
+  
+  tabButtons.forEach(btn => {
+    btn.replaceWith(btn.cloneNode(true));
+  });
+
+  const newTabButtons = document.querySelectorAll(".editor-tabs .tab-btn");
+  const newPanels = document.querySelectorAll(".editor-panels .tab-panel");
+
+  newTabButtons.forEach(btn => {
+    btn.addEventListener("click", () => {
+      newTabButtons.forEach(b => b.classList.remove("active"));
+      newPanels.forEach(p => p.classList.remove("active"));
+      
+      btn.classList.add("active");
+      const targetPanel = document.getElementById(`panel-${btn.dataset.tab}`);
+      if (targetPanel) targetPanel.classList.add("active");
+    });
+  });
+}
+
+function renderSkillsFormMarkup(panel, sec) {
+  panel.innerHTML = `
+    <div class="panel-header-action">
+      <h2>${sec.name}</h2>
+      <div style="display: flex; gap: 8px;">
+        <button class="btn btn-small btn-secondary" id="btnAddSkillCategory"><i class="fa-solid fa-plus"></i> Add Category</button>
+        <button class="btn btn-small btn-danger btn-delete-section" data-sec="${sec.id}" title="Delete whole section"><i class="fa-solid fa-trash"></i></button>
+      </div>
+    </div>
+    <div id="skillCategoriesList"></div>
+  `;
+
+  panel.querySelector(".btn-delete-section").addEventListener("click", async (e) => {
+    const sId = e.currentTarget.dataset.sec;
+    if (await showCustomConfirm("Delete Section", `Are you sure you want to delete the "${sec.name}" section?`)) {
+      const idx = resumeData.sections.findIndex(s => s.id === sId);
+      if (idx !== -1) resumeData.sections.splice(idx, 1);
+      const oIdx = designData.sectionOrder.indexOf(sId);
+      if (oIdx !== -1) designData.sectionOrder.splice(oIdx, 1);
+      const personalTabBtn = document.querySelector('.tab-btn[data-tab="personal"]');
+      if (personalTabBtn) personalTabBtn.click();
+      renderDynamicTabsAndPanels();
+      renderSectionOrderList();
+      saveState();
+    }
+  });
+
+  renderSkillsForm();
+}
+
+function renderListFormMarkup(panel, sec) {
+  panel.innerHTML = `
+    <div class="panel-header-action">
+      <h2>${sec.name}</h2>
+      <div style="display: flex; gap: 8px;">
+        <button class="btn btn-small btn-secondary btn-add-item" data-sec="${sec.id}"><i class="fa-solid fa-plus"></i> Add Item</button>
+        <button class="btn btn-small btn-danger btn-delete-section" data-sec="${sec.id}" title="Delete whole section"><i class="fa-solid fa-trash"></i></button>
+      </div>
+    </div>
+    <div class="list-container" id="list-${sec.id}"></div>
+  `;
+
+  const container = document.getElementById(`list-${sec.id}`);
+  if (!container) return;
+
+  const getPlaceholder = (field) => {
+    const mappings = {
+      education: { title: "Institution", subtitle: "Degree / Program Details", duration: "Duration (e.g. 2020 – 2024)", location: "Location (City, Country)" },
+      experience: { title: "Company Name", subtitle: "Role / Job Title", duration: "Duration (e.g. 2024 – Present)", location: "Location (City, Country)" },
+      projects: { title: "Project Title", subtitle: "Tech Stack / Technologies", duration: "Date (e.g. 05 2024)", location: "Project Link / URL" },
+      extracurricular: { title: "Achievement / Activity", subtitle: "Organization / Context", duration: "Date / Duration", location: "Location / Link" },
+      certifications: { title: "Certificate Name", subtitle: "Issuing Organization", duration: "Date Issued", location: "Credential ID / Link" }
+    };
+    return (mappings[sec.id] && mappings[sec.id][field]) || field.charAt(0).toUpperCase() + field.slice(1);
+  };
+
+  (sec.items || []).forEach((item, index) => {
+    const itemDiv = document.createElement("div");
+    itemDiv.className = "list-item";
+
+    let highlightsHtml = "";
+    (item.highlights || []).forEach((hl, hlIdx) => {
+      const targetId = `input-hl-${sec.id}-${index}-${hlIdx}`;
+      highlightsHtml += `
+        <div class="highlight-row">
+          <div class="highlight-input-wrapper">
+            <div class="format-toolbar mini-toolbar" data-target="${targetId}">
+              <button type="button" class="btn-format" data-action="bold" title="Bold"><b>B</b></button>
+              <button type="button" class="btn-format" data-action="italic" title="Italic"><i>I</i></button>
+              <button type="button" class="btn-format" data-action="underline" title="Underline"><u>U</u></button>
+              <button type="button" class="btn-format" data-action="link" title="Link">🔗</button>
+            </div>
+            <input type="text" id="${targetId}" value="${escHtml(hl)}" class="item-hl-input" data-sec="${sec.id}" data-item-idx="${index}" data-hl-idx="${hlIdx}">
+          </div>
+          <button class="btn-remove-highlight" data-sec="${sec.id}" data-item-idx="${index}" data-hl-idx="${hlIdx}"><i class="fa-solid fa-xmark"></i></button>
+        </div>
+      `;
+    });
+
+    const titleId = `input-${sec.id}-${index}-title`;
+    const subtitleId = `input-${sec.id}-${index}-subtitle`;
+    const durationId = `input-${sec.id}-${index}-duration`;
+    const locationId = `input-${sec.id}-${index}-location`;
+
+    itemDiv.innerHTML = `
+      <div class="form-grid">
+        <div class="form-group col-span-2">
+          <div class="label-with-format">
+            <label>${getPlaceholder('title')}</label>
+            <div class="format-toolbar" data-target="${titleId}">
+              <button type="button" class="btn-format" data-action="bold" title="Bold"><b>B</b></button>
+              <button type="button" class="btn-format" data-action="italic" title="Italic"><i>I</i></button>
+              <button type="button" class="btn-format" data-action="underline" title="Underline"><u>U</u></button>
+              <button type="button" class="btn-format" data-action="link" title="Link">🔗</button>
+            </div>
+          </div>
+          <input type="text" id="${titleId}" value="${escHtml(item.title)}" class="item-field" data-sec="${sec.id}" data-idx="${index}" data-field="title" placeholder="${getPlaceholder('title')}">
+        </div>
+        <div class="form-group col-span-2">
+          <div class="label-with-format">
+            <label>${getPlaceholder('subtitle')}</label>
+            <div class="format-toolbar" data-target="${subtitleId}">
+              <button type="button" class="btn-format" data-action="bold" title="Bold"><b>B</b></button>
+              <button type="button" class="btn-format" data-action="italic" title="Italic"><i>I</i></button>
+              <button type="button" class="btn-format" data-action="underline" title="Underline"><u>U</u></button>
+              <button type="button" class="btn-format" data-action="link" title="Link">🔗</button>
+            </div>
+          </div>
+          <input type="text" id="${subtitleId}" value="${escHtml(item.subtitle)}" class="item-field" data-sec="${sec.id}" data-idx="${index}" data-field="subtitle" placeholder="${getPlaceholder('subtitle')}">
+        </div>
+        <div class="form-group">
+          <div class="label-with-format">
+            <label>${getPlaceholder('duration')}</label>
+            <div class="format-toolbar" data-target="${durationId}">
+              <button type="button" class="btn-format" data-action="bold" title="Bold"><b>B</b></button>
+              <button type="button" class="btn-format" data-action="italic" title="Italic"><i>I</i></button>
+              <button type="button" class="btn-format" data-action="underline" title="Underline"><u>U</u></button>
+              <button type="button" class="btn-format" data-action="link" title="Link">🔗</button>
+            </div>
+          </div>
+          <input type="text" id="${durationId}" value="${escHtml(item.duration)}" class="item-field" data-sec="${sec.id}" data-idx="${index}" data-field="duration" placeholder="${getPlaceholder('duration')}">
+        </div>
+        <div class="form-group">
+          <div class="label-with-format">
+            <label>${getPlaceholder('location')}</label>
+            <div class="format-toolbar" data-target="${locationId}">
+              <button type="button" class="btn-format" data-action="bold" title="Bold"><b>B</b></button>
+              <button type="button" class="btn-format" data-action="italic" title="Italic"><i>I</i></button>
+              <button type="button" class="btn-format" data-action="underline" title="Underline"><u>U</u></button>
+              <button type="button" class="btn-format" data-action="link" title="Link">🔗</button>
+            </div>
+          </div>
+          <input type="text" id="${locationId}" value="${escHtml(item.location)}" class="item-field" data-sec="${sec.id}" data-idx="${index}" data-field="location" placeholder="${getPlaceholder('location')}">
+        </div>
+        
+        <div class="form-group col-span-2">
+          <label>Bullet Points / Key Highlights</label>
+          <div class="highlights-container">
+            <div class="highlights-list-area">
+              ${highlightsHtml}
+            </div>
+            <button class="btn btn-small btn-secondary btn-add-highlight" data-sec="${sec.id}" data-idx="${index}" style="margin-top: 8px;">
+              <i class="fa-solid fa-plus"></i> Add Bullet Point
+            </button>
+          </div>
+        </div>
+      </div>
+      <div class="list-item-controls">
+        <button class="btn-move-up btn-item-up" data-sec="${sec.id}" data-idx="${index}"><i class="fa-solid fa-arrow-up"></i> Move Up</button>
+        <button class="btn-move-down btn-item-down" data-sec="${sec.id}" data-idx="${index}"><i class="fa-solid fa-arrow-down"></i> Move Down</button>
+        <button class="btn-remove-item btn-item-delete" data-sec="${sec.id}" data-idx="${index}"><i class="fa-solid fa-trash"></i> Delete</button>
+      </div>
+    `;
+    container.appendChild(itemDiv);
+  });
+
+  container.querySelectorAll(".item-field").forEach(input => {
+    input.addEventListener("input", (e) => {
+      const { sec: sId, idx, field } = e.target.dataset;
+      const targetSec = resumeData.sections.find(s => s.id === sId);
+      if (targetSec && targetSec.items[idx]) {
+        targetSec.items[idx][field] = e.target.value;
+        saveState();
+      }
+    });
+  });
+
+  container.querySelectorAll(".item-hl-input").forEach(input => {
+    input.addEventListener("input", (e) => {
+      const { sec: sId, itemIdx, hlIdx } = e.target.dataset;
+      const targetSec = resumeData.sections.find(s => s.id === sId);
+      if (targetSec && targetSec.items[itemIdx] && targetSec.items[itemIdx].highlights) {
+        targetSec.items[itemIdx].highlights[hlIdx] = e.target.value;
+        saveState();
+      }
+    });
+  });
+
+  container.querySelectorAll(".btn-add-highlight").forEach(btn => {
+    btn.addEventListener("click", (e) => {
+      const { sec: sId, idx } = btn.dataset;
+      const targetSec = resumeData.sections.find(s => s.id === sId);
+      if (targetSec && targetSec.items[idx]) {
+        if (!targetSec.items[idx].highlights) targetSec.items[idx].highlights = [];
+        targetSec.items[idx].highlights.push("New bullet highlight.");
+        renderDynamicTabsAndPanels();
+        saveState();
+      }
+    });
+  });
+
+  container.querySelectorAll(".btn-remove-highlight").forEach(btn => {
+    btn.addEventListener("click", (e) => {
+      const { sec: sId, itemIdx, hlIdx } = btn.dataset;
+      const targetSec = resumeData.sections.find(s => s.id === sId);
+      if (targetSec && targetSec.items[itemIdx] && targetSec.items[itemIdx].highlights) {
+        targetSec.items[itemIdx].highlights.splice(hlIdx, 1);
+        renderDynamicTabsAndPanels();
+        saveState();
+      }
+    });
+  });
+
+  container.querySelectorAll(".btn-item-up").forEach(btn => {
+    btn.addEventListener("click", (e) => {
+      const { sec: sId, idx } = btn.dataset;
+      const index = parseInt(idx);
+      const targetSec = resumeData.sections.find(s => s.id === sId);
+      if (targetSec && index > 0) {
+        swapItems(targetSec.items, index, index - 1);
+        renderDynamicTabsAndPanels();
+        saveState();
+      }
+    });
+  });
+
+  container.querySelectorAll(".btn-item-down").forEach(btn => {
+    btn.addEventListener("click", (e) => {
+      const { sec: sId, idx } = btn.dataset;
+      const index = parseInt(idx);
+      const targetSec = resumeData.sections.find(s => s.id === sId);
+      if (targetSec && index < targetSec.items.length - 1) {
+        swapItems(targetSec.items, index, index + 1);
+        renderDynamicTabsAndPanels();
+        saveState();
+      }
+    });
+  });
+
+  container.querySelectorAll(".btn-item-delete").forEach(btn => {
+    btn.addEventListener("click", async (e) => {
+      const { sec: sId, idx } = btn.dataset;
+      const index = parseInt(idx);
+      const targetSec = resumeData.sections.find(s => s.id === sId);
+      if (targetSec) {
+        if (await showCustomConfirm("Delete Item", "Are you sure you want to delete this item?")) {
+          targetSec.items.splice(index, 1);
+          renderDynamicTabsAndPanels();
+          saveState();
+        }
+      }
+    });
+  });
+
+  panel.querySelector(".btn-add-item").addEventListener("click", (e) => {
+    const sId = e.currentTarget.dataset.sec;
+    const targetSec = resumeData.sections.find(s => s.id === sId);
+    if (targetSec) {
+      if (!targetSec.items) targetSec.items = [];
+      targetSec.items.push({ title: "New Item", subtitle: "", duration: "", location: "", highlights: [] });
+      renderDynamicTabsAndPanels();
+      saveState();
+    }
+  });
+
+  panel.querySelector(".btn-delete-section").addEventListener("click", async (e) => {
+    const sId = e.currentTarget.dataset.sec;
+    const targetSec = resumeData.sections.find(s => s.id === sId);
+    if (targetSec) {
+      if (await showCustomConfirm("Delete Section", `Are you sure you want to completely delete the "${targetSec.name}" section? This will remove all items inside it.`)) {
+        const idx = resumeData.sections.findIndex(s => s.id === sId);
+        if (idx !== -1) resumeData.sections.splice(idx, 1);
+
+        const oIdx = designData.sectionOrder.indexOf(sId);
+        if (oIdx !== -1) designData.sectionOrder.splice(oIdx, 1);
+        if (designData.sectionVisibility) delete designData.sectionVisibility[sId];
+
+        const personalTabBtn = document.querySelector('.tab-btn[data-tab="personal"]');
+        if (personalTabBtn) personalTabBtn.click();
+
+        renderDynamicTabsAndPanels();
+        renderSectionOrderList();
+        saveState();
+      }
+    }
+  });
+
+  // Bind formatting toolbar buttons
+  container.querySelectorAll(".btn-format").forEach(btn => {
+    btn.addEventListener("mousedown", (e) => {
+      e.preventDefault(); // Prevent input defocus!
+      const targetId = btn.closest(".format-toolbar").dataset.target;
+      const input = document.getElementById(targetId);
+      if (input) {
+        applyFormatting(input, btn.dataset.action);
       }
     });
   });
@@ -711,12 +1352,15 @@ function renderSectionOrderList() {
   if (!container) return;
   container.innerHTML = "";
 
-  const order = designData.sectionOrder || Object.keys(SECTION_META);
+  const order = designData.sectionOrder || resumeData.sections.map(s => s.id);
   const vis   = designData.sectionVisibility || {};
 
   order.forEach((key, idx) => {
-    const meta = SECTION_META[key];
-    if (!meta) return;
+    const sec = resumeData.sections.find(s => s.id === key);
+    if (!sec) return;
+
+    const iconClass = (SECTION_META[key] && SECTION_META[key].icon) || "fa-folder-open";
+    const label = sec.name;
     const visible = vis[key] !== false;
 
     const row = document.createElement("div");
@@ -725,8 +1369,8 @@ function renderSectionOrderList() {
     row.draggable = true;
     row.innerHTML = `
       <span class="section-drag-handle" title="Drag to reorder"><i class="fa-solid fa-grip-vertical"></i></span>
-      <i class="fa-solid ${meta.icon} section-row-icon"></i>
-      <span class="section-row-label">${meta.label}</span>
+      <i class="fa-solid ${iconClass} section-row-icon"></i>
+      <span class="section-row-label">${label}</span>
       <div class="section-row-actions">
         <button class="btn-move-up section-order-up" data-idx="${idx}" title="Move up"><i class="fa-solid fa-arrow-up"></i></button>
         <button class="btn-move-down section-order-down" data-idx="${idx}" title="Move down"><i class="fa-solid fa-arrow-down"></i></button>
@@ -738,7 +1382,6 @@ function renderSectionOrderList() {
     container.appendChild(row);
   });
 
-  // Move up/down buttons
   container.querySelectorAll(".section-order-up").forEach(btn => {
     btn.addEventListener("click", () => {
       const idx = +btn.dataset.idx;
@@ -758,7 +1401,6 @@ function renderSectionOrderList() {
     });
   });
 
-  // Visibility toggles
   container.querySelectorAll(".btn-visibility-toggle").forEach(btn => {
     btn.addEventListener("click", () => {
       const key = btn.dataset.key;
@@ -768,7 +1410,6 @@ function renderSectionOrderList() {
     });
   });
 
-  // Drag-and-drop reorder
   let dragSrc = null;
   container.querySelectorAll(".section-order-row").forEach(row => {
     row.addEventListener("dragstart", (e) => {
@@ -823,24 +1464,20 @@ function calcATSScore() {
   addCheck(p.linkedin?.username);
   addCheck(p.github?.username);
 
-  addCheck(resumeData.education && resumeData.education.length > 0, 2);
-  addCheck(resumeData.experience && resumeData.experience.length > 0, 3);
-  addCheck(resumeData.projects && resumeData.projects.length > 0, 2);
-
-  const skillTags = Array.isArray(resumeData.skills)
-    ? resumeData.skills.reduce((a, c) => a + (c.tags ? c.tags.length : 0), 0)
-    : 0;
-  addCheck(skillTags > 0, 2);
-  addCheck(skillTags >= 5, 1);
-  addCheck(skillTags >= 10, 1);
-
-  addCheck(resumeData.certifications && resumeData.certifications.length > 0);
-  addCheck(resumeData.extracurricular && resumeData.extracurricular.length > 0);
-
-  if (resumeData.experience) {
-    const withHighlights = resumeData.experience.filter(e => e.highlights && e.highlights.length > 1);
-    addCheck(withHighlights.length > 0, 2);
-  }
+  const sections = resumeData.sections || [];
+  sections.forEach(sec => {
+    if (sec.type === "list") {
+      addCheck(sec.items && sec.items.length > 0, 2);
+      if (sec.items && sec.items.length > 0) {
+        const hasHighlights = sec.items.some(item => item.highlights && item.highlights.length > 0);
+        addCheck(hasHighlights, 2);
+      }
+    } else if (sec.type === "tags") {
+      const tagCount = (sec.categories || []).reduce((a, c) => a + (c.tags ? c.tags.length : 0), 0);
+      addCheck(tagCount > 0, 2);
+      addCheck(tagCount >= 5, 1);
+    }
+  });
 
   return Math.min(100, Math.round((score / total) * 100));
 }
@@ -857,438 +1494,14 @@ function updateATSWidget() {
   val.style.color = color;
 }
 
-// 1. Education
-function renderEducationForm() {
-  const container = document.getElementById("educationList");
-  container.innerHTML = "";
-  
-  resumeData.education.forEach((edu, index) => {
-    const item = document.createElement("div");
-    item.className = "list-item";
-    item.innerHTML = `
-      <div class="form-grid">
-        <div class="form-group col-span-2">
-          <label>Institution</label>
-          <input type="text" value="${edu.institution || ''}" class="edu-inst" data-index="${index}">
-        </div>
-        <div class="form-group col-span-2">
-          <label>Degree / Program Details</label>
-          <input type="text" value="${edu.degree || ''}" class="edu-deg" data-index="${index}">
-        </div>
-        <div class="form-group">
-          <label>Duration (e.g. 2020 – 2024)</label>
-          <input type="text" value="${edu.duration || ''}" class="edu-dur" data-index="${index}">
-        </div>
-        <div class="form-group">
-          <label>Location (City, Country)</label>
-          <input type="text" value="${edu.location || ''}" class="edu-loc" data-index="${index}">
-        </div>
-      </div>
-      <div class="list-item-controls">
-        <button class="btn-move-up" data-index="${index}"><i class="fa-solid fa-arrow-up"></i> Move Up</button>
-        <button class="btn-move-down" data-index="${index}"><i class="fa-solid fa-arrow-down"></i> Move Down</button>
-        <button class="btn-remove-item" data-index="${index}"><i class="fa-solid fa-trash"></i> Delete</button>
-      </div>
-    `;
-    container.appendChild(item);
-  });
-
-  // Bind input listeners
-  container.querySelectorAll(".edu-inst").forEach(input => {
-    input.addEventListener("input", (e) => {
-      resumeData.education[e.target.dataset.index].institution = e.target.value;
-      saveState();
-    });
-  });
-  container.querySelectorAll(".edu-deg").forEach(input => {
-    input.addEventListener("input", (e) => {
-      resumeData.education[e.target.dataset.index].degree = e.target.value;
-      saveState();
-    });
-  });
-  container.querySelectorAll(".edu-dur").forEach(input => {
-    input.addEventListener("input", (e) => {
-      resumeData.education[e.target.dataset.index].duration = e.target.value;
-      saveState();
-    });
-  });
-  container.querySelectorAll(".edu-loc").forEach(input => {
-    input.addEventListener("input", (e) => {
-      resumeData.education[e.target.dataset.index].location = e.target.value;
-      saveState();
-    });
-  });
-
-  // Bind controls buttons
-  container.querySelectorAll(".list-item-controls button").forEach(btn => {
-    const idx = parseInt(btn.dataset.index);
-    if (btn.classList.contains("btn-move-up")) {
-      btn.addEventListener("click", () => {
-        swapItems(resumeData.education, idx, idx - 1);
-        renderEducationForm();
-        saveState();
-      });
-    } else if (btn.classList.contains("btn-move-down")) {
-      btn.addEventListener("click", () => {
-        swapItems(resumeData.education, idx, idx + 1);
-        renderEducationForm();
-        saveState();
-      });
-    } else if (btn.classList.contains("btn-remove-item")) {
-      btn.addEventListener("click", async () => {
-        if(await showCustomConfirm("Delete Education", "Delete this education entry?")){
-          resumeData.education.splice(idx, 1);
-          renderEducationForm();
-          saveState();
-        }
-      });
-    }
-  });
-}
-
-// 2. Experience
-function renderExperienceForm() {
-  const container = document.getElementById("experienceList");
-  container.innerHTML = "";
-  
-  resumeData.experience.forEach((exp, index) => {
-    const item = document.createElement("div");
-    item.className = "list-item";
-    
-    // Build highlights HTML
-    let highlightsHtml = "";
-    (exp.highlights || []).forEach((hl, hlIdx) => {
-      highlightsHtml += `
-        <div class="highlight-row">
-          <input type="text" value="${hl.replace(/"/g, '&quot;')}" class="exp-hl-input" data-exp-idx="${index}" data-hl-idx="${hlIdx}">
-          <button class="btn-remove-highlight" data-exp-idx="${index}" data-hl-idx="${hlIdx}"><i class="fa-solid fa-xmark"></i></button>
-        </div>
-      `;
-    });
-
-    item.innerHTML = `
-      <div class="form-grid">
-        <div class="form-group">
-          <label>Company</label>
-          <input type="text" value="${exp.company || ''}" class="exp-com" data-index="${index}">
-        </div>
-        <div class="form-group">
-          <label>Role</label>
-          <input type="text" value="${exp.role || ''}" class="exp-role" data-index="${index}">
-        </div>
-        <div class="form-group">
-          <label>Duration (e.g. 2024 – Present)</label>
-          <input type="text" value="${exp.duration || ''}" class="exp-dur" data-index="${index}">
-        </div>
-        <div class="form-group">
-          <label>Location (City, Country)</label>
-          <input type="text" value="${exp.location || ''}" class="exp-loc" data-index="${index}">
-        </div>
-        <div class="form-group col-span-2">
-          <label>Bullet Highlights</label>
-          <div class="highlights-container" id="highlights-${index}">
-            ${highlightsHtml}
-            <button class="btn-add-highlight" data-index="${index}"><i class="fa-solid fa-plus"></i> Add Bullet Point</button>
-          </div>
-        </div>
-      </div>
-      <div class="list-item-controls">
-        <button class="btn-move-up" data-index="${index}"><i class="fa-solid fa-arrow-up"></i> Move Up</button>
-        <button class="btn-move-down" data-index="${index}"><i class="fa-solid fa-arrow-down"></i> Move Down</button>
-        <button class="btn-remove-item" data-index="${index}"><i class="fa-solid fa-trash"></i> Delete</button>
-      </div>
-    `;
-    container.appendChild(item);
-  });
-
-  // Bind input listeners
-  container.querySelectorAll(".exp-com").forEach(input => {
-    input.addEventListener("input", (e) => {
-      resumeData.experience[e.target.dataset.index].company = e.target.value;
-      saveState();
-    });
-  });
-  container.querySelectorAll(".exp-role").forEach(input => {
-    input.addEventListener("input", (e) => {
-      resumeData.experience[e.target.dataset.index].role = e.target.value;
-      saveState();
-    });
-  });
-  container.querySelectorAll(".exp-dur").forEach(input => {
-    input.addEventListener("input", (e) => {
-      resumeData.experience[e.target.dataset.index].duration = e.target.value;
-      saveState();
-    });
-  });
-  container.querySelectorAll(".exp-loc").forEach(input => {
-    input.addEventListener("input", (e) => {
-      resumeData.experience[e.target.dataset.index].location = e.target.value;
-      saveState();
-    });
-  });
-
-  // Bind nested highlights inputs
-  container.querySelectorAll(".exp-hl-input").forEach(input => {
-    input.addEventListener("input", (e) => {
-      const expIdx = parseInt(e.target.dataset.expIdx);
-      const hlIdx = parseInt(e.target.dataset.hlIdx);
-      resumeData.experience[expIdx].highlights[hlIdx] = e.target.value;
-      saveState();
-    });
-  });
-
-  // Bind highlights add/remove buttons
-  container.querySelectorAll(".btn-add-highlight").forEach(btn => {
-    btn.addEventListener("click", () => {
-      const expIdx = parseInt(btn.dataset.index);
-      if(!resumeData.experience[expIdx].highlights) {
-        resumeData.experience[expIdx].highlights = [];
-      }
-      resumeData.experience[expIdx].highlights.push("New bullet highlight.");
-      renderExperienceForm();
-      saveState();
-    });
-  });
-
-  container.querySelectorAll(".btn-remove-highlight").forEach(btn => {
-    btn.addEventListener("click", () => {
-      const expIdx = parseInt(btn.dataset.expIdx);
-      const hlIdx = parseInt(btn.dataset.hlIdx);
-      resumeData.experience[expIdx].highlights.splice(hlIdx, 1);
-      renderExperienceForm();
-      saveState();
-    });
-  });
-
-  // Bind controls buttons
-  container.querySelectorAll(".list-item-controls button").forEach(btn => {
-    const idx = parseInt(btn.dataset.index);
-    if (btn.classList.contains("btn-move-up")) {
-      btn.addEventListener("click", () => {
-        swapItems(resumeData.experience, idx, idx - 1);
-        renderExperienceForm();
-        saveState();
-      });
-    } else if (btn.classList.contains("btn-move-down")) {
-      btn.addEventListener("click", () => {
-        swapItems(resumeData.experience, idx, idx + 1);
-        renderExperienceForm();
-        saveState();
-      });
-    } else if (btn.classList.contains("btn-remove-item")) {
-      btn.addEventListener("click", async () => {
-        if(await showCustomConfirm("Delete Experience", "Delete this experience entry?")){
-          resumeData.experience.splice(idx, 1);
-          renderExperienceForm();
-          saveState();
-        }
-      });
-    }
-  });
-}
-
-// 3. Projects
-function renderProjectsForm() {
-  const container = document.getElementById("projectsList");
-  container.innerHTML = "";
-  
-  resumeData.projects.forEach((proj, index) => {
-    const item = document.createElement("div");
-    item.className = "list-item";
-    item.innerHTML = `
-      <div class="form-grid">
-        <div class="form-group col-span-2">
-          <label>Project Title</label>
-          <input type="text" value="${proj.name || ''}" class="proj-name" data-index="${index}">
-        </div>
-        <div class="form-group col-span-2">
-          <label>Project Details / Description</label>
-          <textarea rows="3" class="proj-desc" data-index="${index}">${proj.description || ''}</textarea>
-        </div>
-      </div>
-      <div class="list-item-controls">
-        <button class="btn-move-up" data-index="${index}"><i class="fa-solid fa-arrow-up"></i> Move Up</button>
-        <button class="btn-move-down" data-index="${index}"><i class="fa-solid fa-arrow-down"></i> Move Down</button>
-        <button class="btn-remove-item" data-index="${index}"><i class="fa-solid fa-trash"></i> Delete</button>
-      </div>
-    `;
-    container.appendChild(item);
-  });
-
-  // Bind input listeners
-  container.querySelectorAll(".proj-name").forEach(input => {
-    input.addEventListener("input", (e) => {
-      resumeData.projects[e.target.dataset.index].name = e.target.value;
-      saveState();
-    });
-  });
-  container.querySelectorAll(".proj-desc").forEach(input => {
-    input.addEventListener("input", (e) => {
-      resumeData.projects[e.target.dataset.index].description = e.target.value;
-      saveState();
-    });
-  });
-
-  // Bind controls buttons
-  container.querySelectorAll(".list-item-controls button").forEach(btn => {
-    const idx = parseInt(btn.dataset.index);
-    if (btn.classList.contains("btn-move-up")) {
-      btn.addEventListener("click", () => {
-        swapItems(resumeData.projects, idx, idx - 1);
-        renderProjectsForm();
-        saveState();
-      });
-    } else if (btn.classList.contains("btn-move-down")) {
-      btn.addEventListener("click", () => {
-        swapItems(resumeData.projects, idx, idx + 1);
-        renderProjectsForm();
-        saveState();
-      });
-    } else if (btn.classList.contains("btn-remove-item")) {
-      btn.addEventListener("click", async () => {
-        if(await showCustomConfirm("Delete Project", "Delete this project entry?")){
-          resumeData.projects.splice(idx, 1);
-          renderProjectsForm();
-          saveState();
-        }
-      });
-    }
-  });
-}
-
-// 4. Extracurriculars
-function renderExtracurricularForm() {
-  const container = document.getElementById("extracurricularList");
-  container.innerHTML = "";
-  
-  resumeData.extracurricular.forEach((extra, index) => {
-    const item = document.createElement("div");
-    item.className = "list-item";
-    item.innerHTML = `
-      <div class="form-grid">
-        <div class="form-group col-span-2">
-          <label>Title / Category (e.g. CODEKAZE 2022)</label>
-          <input type="text" value="${extra.title || ''}" class="extra-title" data-index="${index}">
-        </div>
-        <div class="form-group col-span-2">
-          <label>Description Details</label>
-          <input type="text" value="${extra.description || ''}" class="extra-desc" data-index="${index}">
-        </div>
-      </div>
-      <div class="list-item-controls">
-        <button class="btn-move-up" data-index="${index}"><i class="fa-solid fa-arrow-up"></i> Move Up</button>
-        <button class="btn-move-down" data-index="${index}"><i class="fa-solid fa-arrow-down"></i> Move Down</button>
-        <button class="btn-remove-item" data-index="${index}"><i class="fa-solid fa-trash"></i> Delete</button>
-      </div>
-    `;
-    container.appendChild(item);
-  });
-
-  // Bind input listeners
-  container.querySelectorAll(".extra-title").forEach(input => {
-    input.addEventListener("input", (e) => {
-      resumeData.extracurricular[e.target.dataset.index].title = e.target.value;
-      saveState();
-    });
-  });
-  container.querySelectorAll(".extra-desc").forEach(input => {
-    input.addEventListener("input", (e) => {
-      resumeData.extracurricular[e.target.dataset.index].description = e.target.value;
-      saveState();
-    });
-  });
-
-  // Bind controls buttons
-  container.querySelectorAll(".list-item-controls button").forEach(btn => {
-    const idx = parseInt(btn.dataset.index);
-    if (btn.classList.contains("btn-move-up")) {
-      btn.addEventListener("click", () => {
-        swapItems(resumeData.extracurricular, idx, idx - 1);
-        renderExtracurricularForm();
-        saveState();
-      });
-    } else if (btn.classList.contains("btn-move-down")) {
-      btn.addEventListener("click", () => {
-        swapItems(resumeData.extracurricular, idx, idx + 1);
-        renderExtracurricularForm();
-        saveState();
-      });
-    } else if (btn.classList.contains("btn-remove-item")) {
-      btn.addEventListener("click", async () => {
-        if(await showCustomConfirm("Delete Entry", "Delete this entry?")){
-          resumeData.extracurricular.splice(idx, 1);
-          renderExtracurricularForm();
-          saveState();
-        }
-      });
-    }
-  });
-}
-
-// 5. Certifications
-function renderCertificationsForm() {
-  const container = document.getElementById("certificationsList");
-  container.innerHTML = "";
-  
-  resumeData.certifications.forEach((cert, index) => {
-    const item = document.createElement("div");
-    item.className = "list-item";
-    item.innerHTML = `
-      <div class="form-group">
-        <label>Certification Name</label>
-        <input type="text" value="${cert.replace(/"/g, '&quot;')}" class="cert-name" data-index="${index}">
-      </div>
-      <div class="list-item-controls">
-        <button class="btn-move-up" data-index="${index}"><i class="fa-solid fa-arrow-up"></i> Move Up</button>
-        <button class="btn-move-down" data-index="${index}"><i class="fa-solid fa-arrow-down"></i> Move Down</button>
-        <button class="btn-remove-item" data-index="${index}"><i class="fa-solid fa-trash"></i> Delete</button>
-      </div>
-    `;
-    container.appendChild(item);
-  });
-
-  // Bind inputs
-  container.querySelectorAll(".cert-name").forEach(input => {
-    input.addEventListener("input", (e) => {
-      resumeData.certifications[e.target.dataset.index] = e.target.value;
-      saveState();
-    });
-  });
-
-  // Bind controls buttons
-  container.querySelectorAll(".list-item-controls button").forEach(btn => {
-    const idx = parseInt(btn.dataset.index);
-    if (btn.classList.contains("btn-move-up")) {
-      btn.addEventListener("click", () => {
-        swapItems(resumeData.certifications, idx, idx - 1);
-        renderCertificationsForm();
-        saveState();
-      });
-    } else if (btn.classList.contains("btn-move-down")) {
-      btn.addEventListener("click", () => {
-        swapItems(resumeData.certifications, idx, idx + 1);
-        renderCertificationsForm();
-        saveState();
-      });
-    } else if (btn.classList.contains("btn-remove-item")) {
-      btn.addEventListener("click", async () => {
-        if(await showCustomConfirm("Delete Certification", "Delete this certification?")){
-          resumeData.certifications.splice(idx, 1);
-          renderCertificationsForm();
-          saveState();
-        }
-      });
-    }
-  });
-}
-
-
 /* ==========================================================================
    RESUME LIVE PREVIEW RENDERING ENGINE
    ========================================================================== */
 
 function renderPreview() {
   const paper = document.getElementById("resumePaper");
+  if (!paper) return;
+  const wrapper = document.getElementById("resumeContentWrapper") || paper;
   
   // Apply Design Variables
   paper.className = `resume-paper template-${designData.template} ${designData.font}`;
@@ -1327,140 +1540,96 @@ function renderPreview() {
 
   htmlContent += `
     <header class="resume-header" data-section-link="personal">
-      <h1>${p.name || ''}</h1>
-      <div class="location">${p.location || ''}</div>
+      <h1>${parseMarkdown(p.name)}</h1>
+      <div class="location">${parseMarkdown(p.location)}</div>
       <div class="resume-contact-row">
         ${contactItems.join(" &bull; ")}
       </div>
     </header>
   `;
 
-  // Render sections in user-defined order, respecting visibility
-  const sectionOrder = designData.sectionOrder || ["education","skills","projects","experience","extracurricular","certifications"];
-  const sectionVis   = designData.sectionVisibility || {};
+  // 2. Render dynamic sections based on sectionOrder and sectionVisibility
+  const order = designData.sectionOrder || resumeData.sections.map(s => s.id);
+  const vis = designData.sectionVisibility || {};
 
-  const buildSection = (key) => {
-    if (sectionVis[key] === false) return "";
+  order.forEach(key => {
+    if (vis[key] === false) return; // Hidden section
 
-    if (key === "education") {
-      if (!resumeData.education || resumeData.education.length === 0) return "";
-      let s = `<section class="resume-section" data-section-link="education">
-        <h2 class="resume-section-title">Education</h2>`;
-      resumeData.education.forEach(edu => {
-        s += `<div class="resume-item">
-          <div class="resume-item-header">
-            <span class="resume-item-title">${edu.institution || ''}</span>
-            <span>${edu.duration || ''}</span>
-          </div>
-          <div class="resume-item-subtitle">
-            <span>${edu.degree || ''}</span>
-            <span>${edu.location || ''}</span>
-          </div>
-        </div>`;
-      });
-      return s + `</section>`;
-    }
+    const sec = resumeData.sections.find(s => s.id === key);
+    if (!sec) return;
 
-    if (key === "skills") {
-      const skillsArr = Array.isArray(resumeData.skills) ? resumeData.skills : [];
-      const nonEmpty = skillsArr.filter(c => c.tags && c.tags.length > 0);
-      if (nonEmpty.length === 0) return "";
-      let s = `<section class="resume-section" data-section-link="skills">
-        <h2 class="resume-section-title">Skill Set</h2>
+    if (sec.type === "tags") {
+      const nonEmpty = (sec.categories || []).filter(c => c.tags && c.tags.length > 0);
+      if (nonEmpty.length === 0) return;
+
+      let s = `<section class="resume-section preview-section" data-section-id="${sec.id}" data-section-link="${sec.id}" draggable="true">
+        <div class="preview-section-handle"><i class="fa-solid fa-grip-vertical"></i> Drag</div>
+        <h2 class="resume-section-title">${sec.name}</h2>
         <div class="skills-text-container">`;
+
       nonEmpty.forEach((cat, ci) => {
         if (designData.template === "tech") {
           s += `<div class="skills-category"${ci > 0 ? ' style="margin-top:10px"' : ''}>
-            <strong>${cat.label}:</strong>
+            <strong>${parseMarkdown(cat.label)}:</strong>
             <div class="skills-badge-list">
-              ${cat.tags.map(t => `<span class="skill-badge">${t}</span>`).join("")}
+              ${cat.tags.map(t => `<span class="skill-badge">${parseMarkdown(t)}</span>`).join("")}
             </div>
           </div>`;
         } else {
           s += `<div class="skills-category"${ci > 0 ? ' style="margin-top:4px"' : ''}>
-            <strong>${cat.label}:</strong> ${cat.tags.join(", ")}
+            <strong>${parseMarkdown(cat.label)}:</strong> ${cat.tags.map(t => parseMarkdown(t)).join(", ")}
           </div>`;
         }
       });
-      return s + `</div></section>`;
-    }
+      s += `</div></section>`;
+      htmlContent += s;
+    } else {
+      if (!sec.items || sec.items.length === 0) return;
 
-    if (key === "projects") {
-      if (!resumeData.projects || resumeData.projects.length === 0) return "";
-      let s = `<section class="resume-section" data-section-link="projects">
-        <h2 class="resume-section-title">Projects</h2>`;
-      resumeData.projects.forEach(proj => {
-        s += `<div class="resume-item">
-          <div class="resume-item-header">
-            <span class="resume-item-title">${proj.name || ''}</span>
-          </div>
-          <div class="resume-item-description" style="margin-top:2px;">
-            &bull; ${proj.description || ''}
-          </div>
-        </div>`;
-      });
-      return s + `</section>`;
-    }
+      let s = `<section class="resume-section preview-section" data-section-id="${sec.id}" data-section-link="${sec.id}" draggable="true">
+        <div class="preview-section-handle"><i class="fa-solid fa-grip-vertical"></i> Drag</div>
+        <h2 class="resume-section-title">${sec.name}</h2>`;
 
-    if (key === "experience") {
-      if (!resumeData.experience || resumeData.experience.length === 0) return "";
-      let s = `<section class="resume-section" data-section-link="experience">
-        <h2 class="resume-section-title">Experience</h2>`;
-      resumeData.experience.forEach(exp => {
-        let hl = "";
-        if (exp.highlights && exp.highlights.length > 0) {
-          hl = `<ul class="resume-highlights">` + exp.highlights.map(h => `<li>${h}</li>`).join("") + `</ul>`;
+      sec.items.forEach(item => {
+        let highlightsHtml = "";
+        if (item.highlights && item.highlights.length > 0) {
+          highlightsHtml = `<ul class="resume-highlights">` + 
+            item.highlights.map(h => `<li>${parseMarkdown(h)}</li>`).join("") + 
+            `</ul>`;
         }
-        s += `<div class="resume-item">
-          <div class="resume-item-header">
-            <span class="resume-item-title">${exp.company || ''}</span>
-            <span>${exp.duration || ''}</span>
-          </div>
+
+        const hasSubRow = item.subtitle || item.location;
+        const subRowHtml = hasSubRow ? `
           <div class="resume-item-subtitle">
-            <span>${exp.role || ''}</span>
-            <span>${exp.location || ''}</span>
+            <span>${parseMarkdown(item.subtitle)}</span>
+            <span>${parseMarkdown(item.location)}</span>
           </div>
-          ${hl}
-        </div>`;
+        ` : "";
+
+        s += `
+          <div class="resume-item">
+            <div class="resume-item-header">
+              <span class="resume-item-title">${parseMarkdown(item.title)}</span>
+              <span>${parseMarkdown(item.duration)}</span>
+            </div>
+            ${subRowHtml}
+            ${highlightsHtml}
+          </div>
+        `;
       });
-      return s + `</section>`;
+      s += `</section>`;
+      htmlContent += s;
     }
+  });
 
-    if (key === "extracurricular") {
-      if (!resumeData.extracurricular || resumeData.extracurricular.length === 0) return "";
-      let s = `<section class="resume-section" data-section-link="extracurricular">
-        <h2 class="resume-section-title">Extracurricular</h2>
-        <div class="extras-list">`;
-      resumeData.extracurricular.forEach(extra => {
-        s += `<div class="extras-item"><strong>${extra.title || ''}:</strong> ${extra.description || ''}</div>`;
-      });
-      return s + `</div></section>`;
-    }
-
-    if (key === "certifications") {
-      if (!resumeData.certifications || resumeData.certifications.length === 0) return "";
-      let s = `<section class="resume-section" data-section-link="certifications">
-        <h2 class="resume-section-title">Certifications</h2>`;
-      if (designData.template === "tech") {
-        s += `<ul class="certs-bullet-list">` + resumeData.certifications.map(c => `<li>${c}</li>`).join("") + `</ul>`;
-      } else {
-        s += `<div class="certs-grid">` + resumeData.certifications.map(c => `<div>&bull; ${c}</div>`).join("") + `</div>`;
-      }
-      return s + `</section>`;
-    }
-
-    return "";
-  };
-
-  sectionOrder.forEach(key => { htmlContent += buildSection(key); });
-
-  // Assign generated layout to DOM page canvas
-  paper.innerHTML = htmlContent;
+  // Assign generated layout to DOM wrapper canvas
+  wrapper.innerHTML = htmlContent;
 
   // Bind Section Links (Clicking preview section moves editor view)
-  const previewSections = paper.querySelectorAll("[data-section-link]");
+  const previewSections = wrapper.querySelectorAll("[data-section-link]");
   previewSections.forEach(sect => {
-    sect.addEventListener("click", () => {
+    sect.addEventListener("click", (e) => {
+      if (e.defaultPrevented) return;
       const sectionKey = sect.dataset.sectionLink;
       const tabBtn = document.querySelector(`.tab-btn[data-tab="${sectionKey}"]`);
       if (tabBtn) {
@@ -1480,6 +1649,66 @@ function renderPreview() {
               h2.style.textShadow = '';
             }, 500);
           }
+        }
+      }
+    });
+  });
+
+  bindPreviewDragAndDrop();
+
+  // Dynamic single-page auto-scaling logic inside the wrapper
+  setTimeout(() => {
+    const A4_HEIGHT_PX = 1122.5; // standard 297mm at 96dpi
+    const marginMm = parseFloat(designData.margin || 12);
+    const paddingPx = marginMm * 3.7795; // mm to px conversion
+    const availableHeight = A4_HEIGHT_PX - (2 * paddingPx);
+
+    // Reset transform to measure true scrollHeight
+    wrapper.style.transform = "none";
+    wrapper.style.height = "auto";
+    const contentH = wrapper.scrollHeight;
+
+    if (contentH > availableHeight) {
+      const scale = availableHeight / contentH;
+      wrapper.style.transform = `scale(${scale.toFixed(4)})`;
+      wrapper.style.transformOrigin = "top center";
+    } else {
+      wrapper.style.transform = "none";
+    }
+  }, 0);
+}
+
+let draggedSectionId = null;
+
+function bindPreviewDragAndDrop() {
+  const previewSections = document.querySelectorAll("#resumePaper .preview-section");
+  
+  previewSections.forEach(section => {
+    section.addEventListener("dragstart", (e) => {
+      draggedSectionId = section.dataset.sectionId;
+      section.classList.add("preview-dragging");
+      e.dataTransfer.effectAllowed = "move";
+      e.dataTransfer.setData("text/plain", draggedSectionId);
+    });
+
+    section.addEventListener("dragend", () => {
+      section.classList.remove("preview-dragging");
+      draggedSectionId = null;
+      saveState();
+    });
+
+    section.addEventListener("dragover", (e) => {
+      e.preventDefault();
+      const targetId = section.dataset.sectionId;
+      if (draggedSectionId && draggedSectionId !== targetId) {
+        const order = designData.sectionOrder;
+        const draggedIdx = order.indexOf(draggedSectionId);
+        const targetIdx = order.indexOf(targetId);
+        if (draggedIdx !== -1 && targetIdx !== -1) {
+          order.splice(draggedIdx, 1);
+          order.splice(targetIdx, 0, draggedSectionId);
+          renderPreview(); // Update preview layout instantly
+          renderSectionOrderList(); // Update sidebar list instantly
         }
       }
     });
@@ -1588,16 +1817,11 @@ function parseResumeText(text) {
   
   const data = {
     personal: { name: "", location: "", phone: "", email: "", linkedin: {}, github: {}, leetcode: {}, hackerrank: {} },
-    education: [],
-    skills: [], // Array of { id, label, tags }
-    projects: [],
-    experience: [],
-    extracurricular: [],
-    certifications: []
+    sections: []
   };
 
   if (lines.length > 0) {
-    data.personal.name = lines[0]; // First line is typically the candidate name
+    data.personal.name = lines[0];
   }
 
   const emailRegex = /[a-zA-Z0-9._%+-]+@[a-zA-Z0-9.-]+\.[a-zA-Z]{2,}/g;
@@ -1609,24 +1833,20 @@ function parseResumeText(text) {
     const line = lines[i];
     const lowerLine = line.toLowerCase();
 
-    // Email
     const emails = line.match(emailRegex);
     if (emails && !data.personal.email) {
       data.personal.email = emails[0];
     }
 
-    // Phone
     const phones = line.match(phoneRegex);
     if (phones && !data.personal.phone) {
       data.personal.phone = phones[0].trim();
     }
 
-    // Location heuristic (lines with commas that don't match emails or phones)
     if (line.includes(",") && !line.match(emailRegex) && !line.match(phoneRegex) && !data.personal.location) {
       data.personal.location = line;
     }
 
-    // Extract usernames or links
     if (lowerLine.includes("linkedin") || (lowerLine.includes("anubhav") && lowerLine.includes("talus") && !lowerLine.includes("email"))) {
       data.personal.linkedin = {
         username: "Anubhav Talus",
@@ -1649,260 +1869,162 @@ function parseResumeText(text) {
     }
   }
 
-  // Set standard defaults if parsing missed elements
   if (!data.personal.email) data.personal.email = "your.email@example.com";
   if (!data.personal.phone) data.personal.phone = "+91 0000000000";
   if (!data.personal.location) data.personal.location = "City, State";
 
-  // Split text by section headers
-  let eduIdx = -1;
-  let skillsIdx = -1;
-  let projectsIdx = -1;
-  let expIdx = -1;
-  let extraIdx = -1;
-  let certIdx = -1;
+  // Dynamic Header/Section detection
+  const detectedHeaders = [];
+  const startLine = Math.min(lines.length, 5);
 
-  for (let i = 0; i < lines.length; i++) {
-    const l = lines[i].toUpperCase();
-    if (l === "EDUCATION") eduIdx = i;
-    else if (l === "SKILL SET" || l === "SKILLS") skillsIdx = i;
-    else if (l === "PROJECTS") projectsIdx = i;
-    else if (l === "EXPERIENCE") expIdx = i;
-    else if (l === "EXTRACURRICULAR") extraIdx = i;
-    else if (l === "CERTIFICATIONS") certIdx = i;
+  for (let i = startLine; i < lines.length; i++) {
+    const line = lines[i].trim();
+    if (!line) continue;
+
+    const isUpper = line === line.toUpperCase() && /[A-Z]/.test(line);
+    const commonHeaders = [
+      "EDUCATION", "EXPERIENCE", "WORK EXPERIENCE", "PROJECTS", 
+      "SKILLS", "SKILL SET", "TECHNICAL SKILLS", "AWARDS", 
+      "CERTIFICATIONS", "EXTRACURRICULAR", "EXTRACURRICULARS", 
+      "SUMMARY", "PUBLICATIONS", "INTERESTS", "ACHIEVEMENTS"
+    ];
+    const isCommonHeader = commonHeaders.includes(line.toUpperCase());
+
+    if ((isUpper || isCommonHeader) && 
+        line.length >= 3 && 
+        line.length <= 30 && 
+        !line.includes("•") && !line.startsWith("-") && !line.startsWith("*") &&
+        !line.match(emailRegex) && !line.match(phoneRegex) &&
+        !line.match(/\d{4}/) &&
+        !line.includes(",")
+    ) {
+      detectedHeaders.push({ name: line, idx: i });
+    }
   }
 
-  const sections = [
-    { name: "edu", idx: eduIdx },
-    { name: "skills", idx: skillsIdx },
-    { name: "projects", idx: projectsIdx },
-    { name: "exp", idx: expIdx },
-    { name: "extra", idx: extraIdx },
-    { name: "certs", idx: certIdx }
-  ].filter(s => s.idx !== -1).sort((a, b) => a.idx - b.idx);
+  // Sort headers by index
+  detectedHeaders.sort((a, b) => a.idx - b.idx);
 
-  function getNextSectionIdx(name) {
-    const currentPos = sections.findIndex(s => s.name === name);
-    if (currentPos === -1 || currentPos === sections.length - 1) return -1;
-    return sections[currentPos + 1].idx;
-  }
+  // Parse each section's lines
+  detectedHeaders.forEach((header, hIdx) => {
+    const start = header.idx;
+    const end = (hIdx < detectedHeaders.length - 1) ? detectedHeaders[hIdx + 1].idx : lines.length;
+    const secLines = lines.slice(start + 1, end);
+    const secName = header.name;
+    const isSkills = secName.toUpperCase().includes("SKILL");
 
-  function getSectionContent(startIdx, nextIdx) {
-    if (startIdx === -1) return [];
-    const end = nextIdx !== -1 ? nextIdx : lines.length;
-    return lines.slice(startIdx + 1, end);
-  }
-
-  // 1. Parse Education
-  const eduLines = getSectionContent(eduIdx, getNextSectionIdx("edu"));
-  let currentEdu = null;
-  eduLines.forEach(l => {
-    const hasDate = l.match(/\d{2}\s+\d{4}/) || l.includes("–") || l.includes("-") || l.match(/\d{4}/);
-    if (hasDate && (l.includes("University") || l.includes("School") || l.includes("College") || l.length < 50)) {
-      if (currentEdu) data.education.push(currentEdu);
-      
-      let inst = l;
-      let dur = "08 2020 – 05 2024";
-      // Extract dates
-      const dateMatch = l.match(/\d{2}\s+\d{4}\s*[-–]\s*\d{2}\s+\d{4}/) || l.match(/\d{4}\s*[-–]\s*\d{4}/) || l.match(/\d{2}\s+\d{4}\s*–\s*\d{2}\s+\d{4}/);
-      if (dateMatch) {
-        dur = dateMatch[0];
-        inst = l.replace(dur, "").trim();
-      }
-      currentEdu = {
-        institution: inst,
-        degree: "Degree Program details",
-        duration: dur,
-        location: "Location"
-      };
-    } else if (currentEdu) {
-      const locMatch = l.match(/\b(Greater Noida|Gurugram|Pune|Hyderabad|Ggn|Ggurugram)\b.*/i);
-      let degreeText = l;
-      if (locMatch) {
-        currentEdu.location = locMatch[0].trim();
-        degreeText = l.replace(locMatch[0], "").trim().replace(/[-—,\s]+$/, "");
-      }
-      
-      // If this line matches typical degree info, or location matched, set it
-      if (locMatch || l.toLowerCase().includes("cgpa") || l.toLowerCase().includes("percentage") || l.toLowerCase().includes("board") || l.toLowerCase().includes("b.tech") || l.toLowerCase().includes("btech") || l.toLowerCase().includes("class")) {
-        currentEdu.degree = degreeText;
-      } else {
-        currentEdu.degree = l;
-      }
-    }
-  });
-  if (currentEdu) data.education.push(currentEdu);
-
-  // 2. Parse Skills
-  const skillsLines = getSectionContent(skillsIdx, getNextSectionIdx("skills"));
-  const parsedCoursework = [];
-  const parsedFrameworks = [];
-  const parsedOther = [];
-  skillsLines.forEach(l => {
-    if (l.startsWith("Coursework:")) {
-      parsedCoursework.push(...l.replace("Coursework:", "").split(",").map(s => s.trim()).filter(s => s.length > 0));
-    } else if (l.startsWith("Frameworks/Languages:") || l.startsWith("Languages/Frameworks:")) {
-      parsedFrameworks.push(...l.replace(/Frameworks\/Languages:|Languages\/Frameworks:/, "").split(",").map(s => s.trim()).filter(s => s.length > 0));
-    } else {
-      parsedOther.push(...l.split(",").map(s => s.trim()).filter(s => s.length > 0));
-    }
-  });
-  if (parsedCoursework.length > 0) data.skills.push({ id: "coursework", label: "Coursework", tags: parsedCoursework });
-  if (parsedFrameworks.length > 0) data.skills.push({ id: "frameworks", label: "Frameworks/Languages", tags: parsedFrameworks });
-  else if (parsedOther.length > 0) data.skills.push({ id: "frameworks", label: "Frameworks/Languages", tags: parsedOther });
-  if (data.skills.length === 0) data.skills = JSON.parse(JSON.stringify(DEFAULT_RESUME_DATA.skills));
-
-  // 3. Parse Projects
-  const projectsLines = getSectionContent(projectsIdx, getNextSectionIdx("projects"));
-  let currentProj = null;
-  projectsLines.forEach(l => {
-    const hasBullet = l.includes("•") || l.startsWith("-") || l.startsWith("*");
+    const cleanSecName = secName.charAt(0).toUpperCase() + secName.slice(1).toLowerCase();
     
-    let isNew = false;
-    let name = "";
-    let desc = "";
-    
-    if (hasBullet) {
-      const parts = l.split(/[•\-*]/);
-      const before = parts[0].trim();
-      if (before && isLikelyProjectTitle(before)) {
-        isNew = true;
-        name = before;
-        const firstBulletIdx = l.search(/[•\-*]/);
-        desc = l.substring(firstBulletIdx + 1).trim();
-      }
-    } else {
-      if (isLikelyProjectTitle(l)) {
-        isNew = true;
-        name = l;
-      }
-    }
-    
-    if (isNew) {
-      if (currentProj) data.projects.push(currentProj);
-      currentProj = { name: name, description: desc };
-    } else if (currentProj) {
-      const cleaned = l.replace(/^[•\-*]\s*/, "").trim();
-      if (cleaned) {
-        currentProj.description += (currentProj.description ? " " : "") + cleaned;
-      }
-    }
-  });
-  if (currentProj) data.projects.push(currentProj);
+    // Normalize IDs to standard defaults where applicable
+    let secId = cleanSecName.toLowerCase();
+    if (secId.includes("experience")) secId = "experience";
+    else if (secId.includes("education")) secId = "education";
+    else if (secId.includes("project")) secId = "projects";
+    else if (secId.includes("skill")) secId = "skills";
+    else if (secId.includes("cert")) secId = "certifications";
+    else if (secId.includes("extra")) secId = "extracurricular";
+    else secId = "sec_" + Date.now() + "_" + hIdx;
 
-  // 4. Parse Experience
-  const expLines = getSectionContent(expIdx, getNextSectionIdx("exp"));
-  let currentExp = null;
-  
-  expLines.forEach(l => {
-    const hasDate = l.match(/\d{2}\s+\d{4}/) || l.includes("ongoing") || l.includes("Present") || l.includes("–") || l.includes("-") || l.match(/\d{4}/);
-    const isCompanyLine = l.length < 60 && !l.includes("•") && !l.startsWith("-") && !l.startsWith("*") && hasDate;
-    
-    const bulletIdx = l.indexOf("•");
-    const beforeBullet = bulletIdx === -1 ? l : l.substring(0, bulletIdx).trim();
-    const afterBullet = bulletIdx === -1 ? "" : l.substring(bulletIdx + 1).trim();
-    
-    if (isCompanyLine) {
-      if (currentExp) data.experience.push(currentExp);
-      
-      let comp = beforeBullet;
-      let dur = "08 2024 – ongoing";
-      const dateMatch = l.match(/\d{2}\s+\d{4}\s*[-–]\s*(ongoing|Present|\d{2}\s+\d{4})/i) || l.match(/\d{4}\s*[-–]\s*(ongoing|Present|\d{4})/i) || l.match(/\d{2}\s+\d{4}\s*–\s*(ongoing|Present|\d{2}\s+\d{4})/i);
-      if (dateMatch) {
-        dur = dateMatch[0];
-        comp = beforeBullet.replace(dur, "").trim();
-      }
-      
-      currentExp = {
-        company: comp,
-        role: "Role Title",
-        duration: dur,
-        location: "Location",
-        highlights: []
-      };
-      
-      if (afterBullet) {
-        const bullets = afterBullet.split("•").map(b => b.trim()).filter(b => b.length > 0);
-        currentExp.highlights.push(...bullets);
-      }
-    } else if (currentExp) {
-      if (bulletIdx !== -1) {
-        // Line has a bullet point
-        if (currentExp.highlights.length === 0 && beforeBullet) {
-          let roleText = beforeBullet;
-          const locMatch = beforeBullet.match(/\b(Greater Noida|Gurugram|Pune|Hyderabad|Ggn|Ggurugram)\b.*/i);
-          if (locMatch) {
-            currentExp.location = locMatch[0].trim();
-            roleText = beforeBullet.replace(locMatch[0], "").trim().replace(/[-—,\s]+$/, "");
-          }
-          if (roleText && (roleText.toLowerCase().includes("developer") || roleText.toLowerCase().includes("intern") || roleText.toLowerCase().includes("engineer") || roleText.toLowerCase().includes("consultant") || roleText.toLowerCase().includes("analyst"))) {
-            currentExp.role = roleText;
-          }
-        }
-        
-        if (afterBullet) {
-          const bullets = afterBullet.split("•").map(b => b.trim()).filter(b => b.length > 0);
-          currentExp.highlights.push(...bullets);
-        }
-      } else {
-        // Line has no bullet point
-        const locMatch = l.match(/\b(Greater Noida|Gurugram|Pune|Hyderabad|Ggn|Ggurugram)\b.*/i);
-        const hasRoleKeyword = l.toLowerCase().includes("developer") || l.toLowerCase().includes("intern") || l.toLowerCase().includes("engineer") || l.toLowerCase().includes("consultant") || l.toLowerCase().includes("analyst");
-        
-        if (currentExp.highlights.length === 0 && (locMatch || hasRoleKeyword) && l.length < 60) {
-          let roleText = l;
-          if (locMatch) {
-            currentExp.location = locMatch[0].trim();
-            roleText = l.replace(locMatch[0], "").trim().replace(/[-—,\s]+$/, "");
-          }
-          if (roleText && hasRoleKeyword) {
-            currentExp.role = roleText;
-          } else if (roleText && (!currentExp.role || currentExp.role === "Role Title")) {
-            currentExp.role = roleText;
-          }
+    if (isSkills) {
+      // Tags/Skills section parser
+      const categories = [];
+      secLines.forEach(l => {
+        if (l.includes(":")) {
+          const parts = l.split(":");
+          const label = parts[0].trim();
+          const tags = parts.slice(1).join(":").split(",").map(t => t.trim()).filter(t => t.length > 0);
+          categories.push({ id: `cat_${Date.now()}_${categories.length}`, label, tags });
         } else {
-          // Highlight continuation
-          const cleaned = l.replace(/^[•\-*]\s*/, "").trim();
-          if (cleaned) {
-            if (currentExp.highlights.length > 0) {
-              currentExp.highlights[currentExp.highlights.length - 1] += " " + cleaned;
+          const tags = l.split(",").map(t => t.trim()).filter(t => t.length > 0);
+          if (tags.length > 0) {
+            categories.push({ id: `cat_${Date.now()}_${categories.length}`, label: "General", tags });
+          }
+        }
+      });
+      data.sections.push({
+        id: secId,
+        name: cleanSecName,
+        type: "tags",
+        categories
+      });
+    } else {
+      // List section parser
+      const items = [];
+      let currentItem = null;
+
+      secLines.forEach(l => {
+        const hasBullet = l.includes("•") || l.startsWith("-") || l.startsWith("*");
+        const cleanLine = l.replace(/^[•\-*]\s*/, "").trim();
+        
+        if (!cleanLine) return;
+
+        if (hasBullet) {
+          if (!currentItem) {
+            currentItem = { title: "Item Detail", subtitle: "", duration: "", location: "", highlights: [] };
+            items.push(currentItem);
+          }
+          currentItem.highlights.push(cleanLine);
+        } else {
+          const hasDate = l.match(/\d{2}\s+\d{4}/) || l.includes("ongoing") || l.includes("Present") || l.includes("–") || l.includes("-") || l.match(/\d{4}/);
+          const isNewItem = !currentItem || hasDate || (currentItem.highlights.length > 0 && l.length < 60);
+
+          if (isNewItem) {
+            let title = cleanLine;
+            let dur = "";
+            let loc = "";
+            let sub = "";
+
+            const dateMatch = l.match(/\d{2}\s+\d{4}\s*[-–]\s*(ongoing|Present|\d{2}\s+\d{4})/i) || 
+                              l.match(/\d{4}\s*[-–]\s*(ongoing|Present|\d{4})/i) || 
+                              l.match(/\d{2}\s+\d{4}\s*–\s*(ongoing|Present|\d{2}\s+\d{4})/i) ||
+                              l.match(/\d{4}/);
+            if (dateMatch) {
+              dur = dateMatch[0];
+              title = title.replace(dur, "").trim();
+            }
+
+            const locMatch = title.match(/\b(Greater Noida|Gurugram|Pune|Hyderabad|Ggn|Ggurugram|Noida|Mumbai|Delhi|Bangalore|Bengaluru|TW|Autodesk|Airtel)\b.*/i);
+            if (locMatch) {
+              loc = locMatch[0].trim();
+              title = title.replace(locMatch[0], "").trim();
+            }
+
+            title = title.replace(/[-—,\s|]+$/, "").trim();
+
+            currentItem = {
+              title: title || "Name / Title",
+              subtitle: sub,
+              duration: dur,
+              location: loc,
+              highlights: []
+            };
+            items.push(currentItem);
+          } else {
+            if (!currentItem.subtitle) {
+              currentItem.subtitle = cleanLine;
             } else {
-              currentExp.highlights.push(cleaned);
+              currentItem.highlights.push(cleanLine);
             }
           }
         }
-      }
-    }
-  });
-  if (currentExp) data.experience.push(currentExp);
-
-  // 5. Parse Extracurriculars
-  const extraLines = getSectionContent(extraIdx, getNextSectionIdx("extra"));
-  extraLines.forEach(l => {
-    if (l.includes(":")) {
-      const parts = l.split(":");
-      data.extracurricular.push({
-        title: parts[0].trim(),
-        description: parts.slice(1).join(":").trim()
       });
-    } else {
-      data.extracurricular.push({
-        title: "Extracurricular Achievement",
-        description: l
+
+      data.sections.push({
+        id: secId,
+        name: cleanSecName,
+        type: "list",
+        items
       });
     }
   });
 
-  // 6. Parse Certifications
-  const certLines = getSectionContent(certIdx, getNextSectionIdx("certs"));
-  certLines.forEach(l => {
-    if (l.includes("•")) {
-      const items = l.split("•").map(i => i.trim()).filter(i => i.length > 0);
-      items.forEach(item => data.certifications.push(item));
-    } else {
-      const name = l.replace(/^[•\-*]\s*/, "");
-      if (name.length > 0) {
-        data.certifications.push(name);
+  // Ensure default sections are present even if not parsed
+  const defaultIds = ["education", "skills", "projects", "experience", "extracurricular"];
+  defaultIds.forEach(id => {
+    if (!data.sections.some(s => s.id === id)) {
+      const standard = DEFAULT_RESUME_DATA.sections.find(s => s.id === id);
+      if (standard) {
+        data.sections.push(JSON.parse(JSON.stringify(standard)));
       }
     }
   });

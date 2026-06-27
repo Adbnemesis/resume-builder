@@ -284,3 +284,126 @@
   grid-template-columns: 1fr;
   gap: 4px;
 }
+
+/* ==========================================================================
+   4. CLASSIC STANDARD (Matches original resume layout exactly)
+   ========================================================================== */
+
+.template-classic .resume-header {
+  text-align: center;
+  margin-bottom: var(--section-spacing, 10px);
+}
+
+.template-classic .resume-header h1 {
+  font-size: 2.1rem;
+  font-weight: 700;
+  color: #000000 !important;
+  text-transform: uppercase;
+  margin-bottom: 2px;
+  letter-spacing: 0.5px;
+}
+
+.template-classic .resume-header .location {
+  font-size: 0.95rem;
+  font-weight: 500;
+  color: #000000 !important;
+  margin-bottom: 4px;
+}
+
+.template-classic .resume-contact-row {
+  display: flex;
+  flex-wrap: wrap;
+  justify-content: center;
+  align-items: center;
+  column-gap: 16px;
+  row-gap: 4px;
+  font-size: 0.82rem;
+  color: #000000 !important;
+  font-weight: 500;
+}
+
+.template-classic .resume-contact-item {
+  color: #000000 !important;
+  text-decoration: underline !important;
+  display: inline-flex;
+  align-items: center;
+  gap: 4px;
+}
+
+.template-classic .resume-contact-item i {
+  color: #000000 !important;
+  font-size: 0.85rem;
+}
+
+.template-classic .resume-section-title {
+  color: #000000 !important; /* Always black */
+  border-bottom: 1px solid #111111 !important; /* Thin solid line */
+  padding-bottom: 2px;
+  margin-top: 10px;
+  margin-bottom: 6px;
+  font-size: 1rem;
+  font-weight: 700;
+  text-transform: uppercase;
+  letter-spacing: 1px;
+}
+
+.template-classic .resume-item {
+  margin-bottom: 8px;
+}
+
+.template-classic .resume-item-header {
+  font-size: 0.9rem;
+  font-weight: 700;
+  color: #000000 !important;
+}
+
+.template-classic .resume-item-header span:first-child {
+  font-weight: 700;
+}
+
+.template-classic .resume-item-header span:last-child {
+  font-weight: 700;
+}
+
+.template-classic .resume-item-subtitle {
+  font-size: 0.86rem;
+  color: #000000 !important;
+  margin-top: 1px;
+}
+
+.template-classic .resume-item-subtitle span:first-child {
+  font-style: italic;
+  font-weight: 400;
+}
+
+.template-classic .resume-item-subtitle span:last-child {
+  font-style: italic;
+  font-weight: 400;
+}
+
+/* Underline Project names in Classic template */
+.template-classic [data-section-link="projects"] .resume-item-title {
+  text-decoration: underline !important;
+}
+
+.template-classic .resume-highlights {
+  margin-top: 2px;
+  padding-left: 15px;
+}
+
+.template-classic .resume-highlights li {
+  font-size: 0.85rem;
+  line-height: var(--line-height, 1.2);
+  color: #111111 !important;
+  margin-bottom: 1px;
+}
+
+.template-classic .skills-text-container {
+  font-size: 0.85rem;
+  line-height: var(--line-height, 1.2);
+  color: #111111 !important;
+}
+
+.template-classic .skills-category {
+  margin-bottom: 2px;
+}
