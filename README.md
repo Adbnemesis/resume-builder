@@ -47,11 +47,27 @@ Since the app is entirely client-side, you can open and run it locally:
 
 ### Option B: Local Web Server (Recommended)
 Running a local web server allows the app to automatically detect and load your private personal data.
+
+#### How to Start the Server:
 1. Run this command in your project root:
    ```bash
    python3 -m http.server 8080 --directory editable_resume/
    ```
 2. Navigate to [http://localhost:8080](http://localhost:8080) in your browser.
+
+#### How to Stop the Server:
+* In the terminal where the server is running, press **`Ctrl + C`**.
+* If the server was sent to the background or port `8080` is locked, you can free the port and stop the server by running:
+  ```bash
+  kill $(lsof -t -i:8080)
+  ```
+
+#### How to Restart the Server:
+1. Free port `8080` using the stop instructions above.
+2. Re-run the start command:
+   ```bash
+   python3 -m http.server 8080 --directory editable_resume/
+   ```
 
 ---
 
@@ -62,6 +78,23 @@ When exporting your resume via browser print (`Cmd + P` / `Ctrl + P` or the **PD
 2. **Margins**: Set to **None** (this allows the resume builder's CSS to take full edge-to-edge control of the sheet).
 3. **Headers and footers**: **Uncheck** this box (having it checked reserves margins at the top and bottom for URLs/dates, which breaks page height constraints).
 4. **Background graphics**: **Check** this box (this forces the browser to print colored markers, custom lines, and visual accents).
+
+---
+
+## Google Sheets Application Management
+
+The application features a Google Sheets integration to sync and manage your job applications automatically:
+
+* **Spreadsheet ID**: `1AvZJnRdimDyJ9UJjdKLiL5Rfi1ax_zCYkwvDSIFxgJg`
+* **Features**:
+  * **Automated Sync**: Appends new jobs with details (Company, Title, Location, Salary, WLB, ATS Score, Link) and sets status to `"Not Applied"`.
+  * **Duplicate Prevention**: Reads existing listings from the sheet first and only adds newly discovered jobs (so you don't repeat applications).
+  * **Token Re-use**: The authenticated session is stored securely in your local environment, meaning subsequent runs will sync instantly without prompting for login.
+* **Sync command**:
+  Run this command in the project root to synchronize your latest CSV results to Google Sheets:
+  ```bash
+  python3 -u sync_sheets.py
+  ```
 
 ---
 

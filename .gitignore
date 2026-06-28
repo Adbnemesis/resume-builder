@@ -1,5 +1,6 @@
 # Personal Data (Resume details & search results)
 editable_resume/local_resume_data.json
+editable_resume/Anubhav_talus_June_2026.pdf
 job_results.md
 
 # Local environment & secret files
@@ -11,6 +12,7 @@ job_results.md
 *.key
 *.token
 credentials.json
+google_sheet_credentials.json
 secrets.json
 
 # IDE / Editor configuration
