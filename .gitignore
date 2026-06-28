@@ -43,3 +43,6 @@ venv/
 .venv/
 pip-log.txt
 pip-delete-this-directory.txt
+
+# Private Personal Data folder
+personal_data/
