@@ -326,14 +326,27 @@ async function loadState() {
     designData = { ...DEFAULT_DESIGN_DATA };
   }
 
-  // Ensure sectionOrder and sectionVisibility exist (for backward compat)
-  if (!designData.sectionOrder) designData.sectionOrder = resumeData.sections.map(s => s.id);
-  if (!designData.sectionVisibility) {
-    designData.sectionVisibility = {};
-    resumeData.sections.forEach(s => {
-      designData.sectionVisibility[s.id] = true;
-    });
-  }
+  // Ensure sectionOrder and sectionVisibility exist and are synced
+  syncDesignDataWithSections();
+}
+
+function syncDesignDataWithSections() {
+  if (!designData) designData = {};
+  
+  // Rebuild sectionOrder to match the current sections in resumeData
+  const currentIds = resumeData.sections.map(s => s.id);
+  designData.sectionOrder = currentIds;
+  
+  // Rebuild sectionVisibility: keep visibility of existing ones, default new ones to true
+  const newVis = {};
+  resumeData.sections.forEach(s => {
+    if (designData.sectionVisibility && designData.sectionVisibility[s.id] !== undefined) {
+      newVis[s.id] = designData.sectionVisibility[s.id];
+    } else {
+      newVis[s.id] = true;
+    }
+  });
+  designData.sectionVisibility = newVis;
 }
 
 function saveState() {
@@ -397,15 +410,16 @@ function initFormInputs() {
 
 // Bind add buttons for list inputs
 function initListControls() {
-  // Delegate clicks on btnAddSkillCategory
+  // Delegate clicks on btn-add-skill-category
   document.addEventListener("click", (e) => {
-    const btn = e.target.closest("#btnAddSkillCategory");
+    const btn = e.target.closest(".btn-add-skill-category");
     if (btn) {
-      const skillsSec = resumeData.sections.find(s => s.id === "skills");
+      const secId = btn.dataset.sec;
+      const skillsSec = resumeData.sections.find(s => s.id === secId);
       if (skillsSec) {
         if (!skillsSec.categories) skillsSec.categories = [];
         skillsSec.categories.push({ id: `cat_${Date.now()}`, label: "Custom Category", tags: [] });
-        renderSkillsForm();
+        renderSkillsForm(skillsSec);
         saveState();
       }
     }
@@ -514,19 +528,58 @@ function initZoomAndUtilityControls() {
 
   // Create custom section
   const btnCreateSection = document.getElementById("btnCreateCustomSection");
-  if (btnCreateSection) {
-    btnCreateSection.addEventListener("click", async () => {
-      const name = prompt("Enter a name for your custom section (e.g. Awards, Publications):");
+  const btnTabCreateSection = document.getElementById("btnTabCreateCustomSection");
+  const customSecModal = document.getElementById("customSectionModal");
+  const customSecNameInput = document.getElementById("customSecName");
+  const customSecTypeSelect = document.getElementById("customSecType");
+  const customSecBtnCancel = document.getElementById("customSecBtnCancel");
+  const customSecBtnConfirm = document.getElementById("customSecBtnConfirm");
+
+  if (customSecModal) {
+    const openModal = () => {
+      customSecNameInput.value = "";
+      customSecTypeSelect.value = "list";
+      customSecModal.style.display = "flex";
+      customSecNameInput.focus();
+    };
+
+    if (btnCreateSection) btnCreateSection.addEventListener("click", openModal);
+    if (btnTabCreateSection) btnTabCreateSection.addEventListener("click", openModal);
+
+    customSecBtnCancel.addEventListener("click", () => {
+      customSecModal.style.display = "none";
+    });
+
+    customSecBtnConfirm.addEventListener("click", () => {
+      const name = customSecNameInput.value;
+      const type = customSecTypeSelect.value;
       if (name && name.trim()) {
         const secId = "custom_" + Date.now();
         const cleanName = name.trim();
         
-        resumeData.sections.push({
+        const newSection = {
           id: secId,
           name: cleanName,
-          type: "list",
-          items: []
-        });
+          type: type
+        };
+
+        if (type === "list") {
+          newSection.items = [{
+            title: "",
+            subtitle: "",
+            duration: "",
+            location: "",
+            highlights: [""]
+          }];
+        } else {
+          newSection.categories = [{
+            id: `cat_${Date.now()}_0`,
+            label: "General",
+            tags: []
+          }];
+        }
+
+        resumeData.sections.push(newSection);
 
         if (!designData.sectionOrder) designData.sectionOrder = resumeData.sections.map(s => s.id);
         else designData.sectionOrder.push(secId);
@@ -537,6 +590,8 @@ function initZoomAndUtilityControls() {
         renderDynamicTabsAndPanels();
         renderSectionOrderList();
         saveState();
+
+        customSecModal.style.display = "none";
 
         setTimeout(() => {
           const tabBtn = document.querySelector(`.tab-btn[data-tab="${secId}"]`);
@@ -683,6 +738,7 @@ function initZoomAndUtilityControls() {
         // Basic schema validations
         if (parsed.personal && (parsed.education || parsed.sections || parsed.experience)) {
           resumeData = migrateToDynamicSchema(parsed);
+          syncDesignDataWithSections();
           saveState();
           renderAllForms();
           await showCustomAlert("Import Successful", "Resume data successfully imported!", "fa-solid fa-circle-check", "#10b981");
@@ -726,11 +782,13 @@ function initZoomAndUtilityControls() {
       }
 
       try {
-        const text = await extractTextFromPDF(file);
+        const arrayBuffer = await file.arrayBuffer();
+        const text = await extractTextFromPDF(arrayBuffer);
         const parsedData = parseResumeText(text);
         
         if (await showCustomConfirm("Import PDF", "We extracted your details from the PDF. Would you like to load this data into the editor? This will overwrite your current draft.", "fa-solid fa-file-pdf", "#3b82f6")) {
           resumeData = parsedData;
+          syncDesignDataWithSections();
           saveState();
           renderAllForms();
           await showCustomAlert("Success", "Resume successfully parsed and imported from PDF!", "fa-solid fa-circle-check", "#10b981");
@@ -896,14 +954,22 @@ function swapItems(arr, i1, i2) {
 }
 
 // Skills: Tag chip input form
-function renderSkillsForm() {
-  const container = document.getElementById("skillCategoriesList");
+function renderSkillsForm(sec) {
+  if (!sec) return;
+  if (!sec.categories || sec.categories.length === 0) {
+    sec.categories = [{
+      id: `cat_${Date.now()}_0`,
+      label: "General",
+      tags: []
+    }];
+    saveState();
+  }
+
+  const container = document.getElementById(`skills-list-${sec.id}`);
   if (!container) return;
   container.innerHTML = "";
 
-  const skillsSec = resumeData.sections.find(s => s.id === "skills");
-  if (!skillsSec) return;
-  const skillsArr = skillsSec.categories || [];
+  const skillsArr = sec.categories || [];
 
   skillsArr.forEach((cat, catIdx) => {
     const div = document.createElement("div");
@@ -939,7 +1005,7 @@ function renderSkillsForm() {
     btn.addEventListener("click", (e) => {
       const idx = +btn.dataset.idx;
       skillsArr.splice(idx, 1);
-      renderSkillsForm();
+      renderSkillsForm(sec);
       saveState();
     });
   });
@@ -950,7 +1016,7 @@ function renderSkillsForm() {
       const ci = +btn.dataset.catidx;
       const ti = +btn.dataset.tidx;
       skillsArr[ci].tags.splice(ti, 1);
-      renderSkillsForm();
+      renderSkillsForm(sec);
       saveState();
     });
   });
@@ -964,10 +1030,10 @@ function renderSkillsForm() {
         const ci = +inp.dataset.catidx;
         if (val && !skillsArr[ci].tags.includes(val)) {
           skillsArr[ci].tags.push(val);
-          renderSkillsForm();
+          renderSkillsForm(sec);
           saveState();
           // Refocus the input for the same category
-          const inputs = document.querySelectorAll(".skill-tag-input");
+          const inputs = container.querySelectorAll(".skill-tag-input");
           if (inputs[ci]) inputs[ci].focus();
         }
       }
@@ -1025,6 +1091,7 @@ function bindTabNavigationHandlers() {
   const panels = document.querySelectorAll(".editor-panels .tab-panel");
   
   tabButtons.forEach(btn => {
+    if (btn.id === "btnTabCreateCustomSection") return;
     btn.replaceWith(btn.cloneNode(true));
   });
 
@@ -1032,6 +1099,7 @@ function bindTabNavigationHandlers() {
   const newPanels = document.querySelectorAll(".editor-panels .tab-panel");
 
   newTabButtons.forEach(btn => {
+    if (btn.id === "btnTabCreateCustomSection") return;
     btn.addEventListener("click", () => {
       newTabButtons.forEach(b => b.classList.remove("active"));
       newPanels.forEach(p => p.classList.remove("active"));
@@ -1048,11 +1116,11 @@ function renderSkillsFormMarkup(panel, sec) {
     <div class="panel-header-action">
       <h2>${sec.name}</h2>
       <div style="display: flex; gap: 8px;">
-        <button class="btn btn-small btn-secondary" id="btnAddSkillCategory"><i class="fa-solid fa-plus"></i> Add Category</button>
+        <button class="btn btn-small btn-secondary btn-add-skill-category" data-sec="${sec.id}"><i class="fa-solid fa-plus"></i> Add Category</button>
         <button class="btn btn-small btn-danger btn-delete-section" data-sec="${sec.id}" title="Delete whole section"><i class="fa-solid fa-trash"></i></button>
       </div>
     </div>
-    <div id="skillCategoriesList"></div>
+    <div class="skill-categories-list" id="skills-list-${sec.id}"></div>
   `;
 
   panel.querySelector(".btn-delete-section").addEventListener("click", async (e) => {
@@ -1070,10 +1138,21 @@ function renderSkillsFormMarkup(panel, sec) {
     }
   });
 
-  renderSkillsForm();
+  renderSkillsForm(sec);
 }
 
 function renderListFormMarkup(panel, sec) {
+  if (!sec.items || sec.items.length === 0) {
+    sec.items = [{
+      title: "",
+      subtitle: "",
+      duration: "",
+      location: "",
+      highlights: [""]
+    }];
+    saveState();
+  }
+
   panel.innerHTML = `
     <div class="panel-header-action">
       <h2>${sec.name}</h2>
@@ -1532,7 +1611,7 @@ function renderPreview() {
     contactItems.push(`<a href="${p.github.url || '#'}" target="_blank" class="resume-contact-item"><i class="fa-brands fa-github"></i> ${p.github.username}</a>`);
   }
   if (p.leetcode && p.leetcode.username) {
-    contactItems.push(`<a href="${p.leetcode.url || '#'}" target="_blank" class="resume-contact-item"><i class="fa-code"></i> ${p.leetcode.username}</a>`);
+    contactItems.push(`<a href="${p.leetcode.url || '#'}" target="_blank" class="resume-contact-item"><i class="fa-solid fa-code"></i> ${p.leetcode.username}</a>`);
   }
   if (p.hackerrank && p.hackerrank.username) {
     contactItems.push(`<a href="${p.hackerrank.url || '#'}" target="_blank" class="resume-contact-item"><i class="fa-solid fa-square-poll-vertical"></i> ${p.hackerrank.username}</a>`);
@@ -1717,11 +1796,22 @@ function bindPreviewDragAndDrop() {
 
 // --- PDF PARSING AND HEURISTIC LAYOUT PARSER ---
 
-async function extractTextFromPDF(file) {
-  const arrayBuffer = await file.arrayBuffer();
+async function extractTextFromPDF(fileOrArrayBuffer) {
+  const arrayBuffer = fileOrArrayBuffer instanceof ArrayBuffer ? fileOrArrayBuffer : await fileOrArrayBuffer.arrayBuffer();
   const pdf = await pdfjsLib.getDocument({ data: arrayBuffer }).promise;
   let fullText = "";
   
+  const commonHeaders = [
+    "EDUCATION", "EXPERIENCE", "WORK EXPERIENCE", "PROJECTS", 
+    "SKILLS", "SKILL SET", "TECHNICAL SKILLS", "AWARDS", 
+    "CERTIFICATIONS", "EXTRACURRICULAR", "EXTRACURRICULARS", 
+    "SUMMARY", "PUBLICATIONS", "INTERESTS", "ACHIEVEMENTS",
+    "PATENTS", "LEADERSHIP", "ORGANIZATIONS", "LANGUAGES",
+    "COURSES", "OBJECTIVE", "VOLUNTEERING", "ACTIVITIES",
+    "HACKATHONS", "PROJECT EXPERIENCE", "ACADEMIC PROJECTS",
+    "WORK HISTORY", "PROFESSIONAL EXPERIENCE", "LINKS", "ABOUT ME"
+  ];
+
   for (let i = 1; i <= pdf.numPages; i++) {
     const page = await pdf.getPage(i);
     const textContent = await page.getTextContent();
@@ -1737,20 +1827,30 @@ async function extractTextFromPDF(file) {
       const x = item.transform[4];
       const y = item.transform[5];
       
+      const itemStrUpper = item.str.trim().toUpperCase();
+      const isCommonHeader = commonHeaders.includes(itemStrUpper);
+
       // Group items with Y coordinates within a 5-pixel threshold
       let foundLineYStr = null;
-      for (const lineYStr in linesMap) {
-        const lineY = parseFloat(lineYStr);
-        if (Math.abs(lineY - y) < 5) {
-          foundLineYStr = lineYStr;
-          break;
+      if (!isCommonHeader) {
+        for (const lineYStr in linesMap) {
+          const lineY = parseFloat(lineYStr);
+          // Never merge normal text with a line containing a common header
+          const targetLineItems = linesMap[lineYStr];
+          const hasHeader = targetLineItems.some(ti => commonHeaders.includes(ti.text.trim().toUpperCase()));
+          if (hasHeader) continue;
+
+          if (Math.abs(lineY - y) < 5) {
+            foundLineYStr = lineYStr;
+            break;
+          }
         }
       }
       
       if (foundLineYStr !== null) {
-        linesMap[foundLineYStr].push({ text: item.str, x: x });
+        linesMap[foundLineYStr].push({ text: item.str, x: x, width: item.width || 0 });
       } else {
-        linesMap[y] = [{ text: item.str, x: x }];
+        linesMap[y] = [{ text: item.str, x: x, width: item.width || 0 }];
       }
     });
     
@@ -1763,7 +1863,17 @@ async function extractTextFromPDF(file) {
       const lineItems = linesMap[yKey];
       lineItems.sort((a, b) => a.x - b.x);
       
-      const lineText = lineItems.map(item => item.text).join(" ");
+      // Join items - use tab separator for large X gaps (preserves left/right alignment)
+      let lineText = "";
+      lineItems.forEach((item, idx) => {
+        if (idx === 0) {
+          lineText = item.text;
+        } else {
+          const prevEnd = lineItems[idx - 1].x + lineItems[idx - 1].width;
+          const gap = item.x - prevEnd;
+          lineText += (gap > 30 ? "\t" : " ") + item.text;
+        }
+      });
       pageText += lineText + "\n";
     });
     
@@ -1793,6 +1903,16 @@ function cleanPdfText(text) {
   text = text.replace(/\bfl\s+(?=[a-zA-Z]+)/gi, "fl");
   // 2. Middle of word fl: "air fl ow" -> "airflow"
   text = text.replace(/\b([a-zA-Z]+)\s+fl\s+(?=[a-zA-Z]+)/gi, "$1fl");
+  
+  // 6. Clean space before/after commas
+  text = text.replace(/\s+,\s*/g, ", ");
+  
+  // 7. Clean mid-word ligatures where capitalized MXP represent 'ti' (only in lowercase context to avoid breaking acronyms or headers)
+  text = text.replace(/([a-z]+)[MXP]([a-z]+)/g, "$1ti$2");
+  
+  // 8. Clean specific misspelled words from font issues
+  text = text.replace(/\bsoaware\b/gi, "software");
+  text = text.replace(/\bsoLware\b/gi, "software");
   
   // Clean double spaces
   text = text.replace(/ +/g, " ");
@@ -1844,7 +1964,10 @@ function parseResumeText(text) {
     }
 
     if (line.includes(",") && !line.match(emailRegex) && !line.match(phoneRegex) && !data.personal.location) {
-      data.personal.location = line;
+      // Only set as location if it doesn't look like section content
+      if (!line.match(/\d{2}\s+\d{4}/) && !lowerLine.includes("university") && !lowerLine.includes("school")) {
+        data.personal.location = line.replace(/\t/g, " ").trim();
+      }
     }
 
     if (lowerLine.includes("linkedin") || (lowerLine.includes("anubhav") && lowerLine.includes("talus") && !lowerLine.includes("email"))) {
@@ -1875,22 +1998,24 @@ function parseResumeText(text) {
 
   // Dynamic Header/Section detection
   const detectedHeaders = [];
-  const startLine = Math.min(lines.length, 5);
+  const commonHeaders = [
+    "EDUCATION", "EXPERIENCE", "WORK EXPERIENCE", "PROJECTS", 
+    "SKILLS", "SKILL SET", "TECHNICAL SKILLS", "AWARDS", 
+    "CERTIFICATIONS", "EXTRACURRICULAR", "EXTRACURRICULARS", 
+    "SUMMARY", "PUBLICATIONS", "INTERESTS", "ACHIEVEMENTS",
+    "PATENTS", "LEADERSHIP", "ORGANIZATIONS", "LANGUAGES",
+    "COURSES", "OBJECTIVE", "VOLUNTEERING", "ACTIVITIES",
+    "HACKATHONS", "PROJECT EXPERIENCE", "ACADEMIC PROJECTS",
+    "WORK HISTORY", "PROFESSIONAL EXPERIENCE", "LINKS", "ABOUT ME"
+  ];
 
-  for (let i = startLine; i < lines.length; i++) {
-    const line = lines[i].trim();
+  for (let i = 2; i < lines.length; i++) {
+    const line = lines[i].replace(/\t/g, " ").trim();
     if (!line) continue;
 
-    const isUpper = line === line.toUpperCase() && /[A-Z]/.test(line);
-    const commonHeaders = [
-      "EDUCATION", "EXPERIENCE", "WORK EXPERIENCE", "PROJECTS", 
-      "SKILLS", "SKILL SET", "TECHNICAL SKILLS", "AWARDS", 
-      "CERTIFICATIONS", "EXTRACURRICULAR", "EXTRACURRICULARS", 
-      "SUMMARY", "PUBLICATIONS", "INTERESTS", "ACHIEVEMENTS"
-    ];
     const isCommonHeader = commonHeaders.includes(line.toUpperCase());
 
-    if ((isUpper || isCommonHeader) && 
+    if (isCommonHeader && 
         line.length >= 3 && 
         line.length <= 30 && 
         !line.includes("•") && !line.startsWith("-") && !line.startsWith("*") &&
@@ -1905,56 +2030,131 @@ function parseResumeText(text) {
   // Sort headers by index
   detectedHeaders.sort((a, b) => a.idx - b.idx);
 
-  // Parse each section's lines
-  detectedHeaders.forEach((header, hIdx) => {
-    const start = header.idx;
-    const end = (hIdx < detectedHeaders.length - 1) ? detectedHeaders[hIdx + 1].idx : lines.length;
-    const secLines = lines.slice(start + 1, end);
-    const secName = header.name;
+  if (detectedHeaders.length === 0) {
+    return data;
+  }
+
+  // === Determine content direction (reversed vs normal) ===
+  // Browser-generated PDFs often render section header text AFTER their content
+  // in the PDF text layer (e.g. education items appear before "EDUCATION" header).
+  // Detect this by checking if content lines exist above the first detected header.
+  let contentStartLine = -1;
+  
+  for (let i = 1; i < detectedHeaders[0].idx; i++) {
+    const line = lines[i].replace(/\t/g, " ");
+    const lowerLine = line.toLowerCase();
+    
+    // Skip lines that are clearly personal/contact info
+    if (line.match(emailRegex) || line.match(phoneRegex)) continue;
+    if (lowerLine.includes("linkedin") || lowerLine.includes("github")) continue;
+    if (lowerLine.includes("leetcode") || lowerLine.includes("hackerrank")) continue;
+    if (line.includes("•") || line.includes("✉") || line.includes("cid:")) continue;
+    if (/[\uf000-\ufdff]/.test(line)) continue;
+    if (lowerLine.includes("adbnemesis")) continue;
+    
+    // First line that looks like content marks the start
+    if (i >= 2 && line.length > 10) {
+      contentStartLine = i;
+      break;
+    }
+  }
+
+  // If first header has content lines above it → reversed mode
+  const isReversed = contentStartLine !== -1 && (detectedHeaders[0].idx - contentStartLine > 0);
+
+  // Build section content ranges based on detected direction
+  const sectionRanges = [];
+  if (isReversed) {
+    // Content appears BEFORE headers (common in browser-generated PDFs)
+    detectedHeaders.forEach((header, hIdx) => {
+      const start = hIdx === 0 ? contentStartLine : detectedHeaders[hIdx - 1].idx + 1;
+      const end = header.idx;
+      if (end > start) {
+        sectionRanges.push({ name: header.name, secLines: lines.slice(start, end) });
+      }
+    });
+  } else {
+    // Content appears AFTER headers (standard order)
+    detectedHeaders.forEach((header, hIdx) => {
+      const start = header.idx + 1;
+      const end = hIdx < detectedHeaders.length - 1 ? detectedHeaders[hIdx + 1].idx : lines.length;
+      if (end > start) {
+        sectionRanges.push({ name: header.name, secLines: lines.slice(start, end) });
+      }
+    });
+  }
+
+  // Helper: detect description verbs that indicate a highlight line, not a title/subtitle
+  const descVerbRegex = /^(built|developed|created|designed|implemented|worked|used|led|managed|deployed|migrated|optimized|integrated|tested|wrote|configured|maintained|analyzed|established|conducted|presented|published|achieved|secured|contributed|improved|spearheaded|architected|launched|delivered|collaborated|refactored|automated|orchestrated|utilized|reduced|increased|streamlined)/i;
+
+  // Parse each section
+  sectionRanges.forEach((section, hIdx) => {
+    const secLines = section.secLines;
+    const secName = section.name;
     const isSkills = secName.toUpperCase().includes("SKILL");
 
     const cleanSecName = secName.charAt(0).toUpperCase() + secName.slice(1).toLowerCase();
     
     // Normalize IDs to standard defaults where applicable
     let secId = cleanSecName.toLowerCase();
-    if (secId.includes("experience")) secId = "experience";
+    if (secId.includes("experience") || secId.includes("work")) secId = "experience";
     else if (secId.includes("education")) secId = "education";
     else if (secId.includes("project")) secId = "projects";
     else if (secId.includes("skill")) secId = "skills";
     else if (secId.includes("cert")) secId = "certifications";
-    else if (secId.includes("extra")) secId = "extracurricular";
+    else if (secId.includes("extra") || secId.includes("achievement") || secId.includes("award")) secId = "extracurricular";
     else secId = "sec_" + Date.now() + "_" + hIdx;
 
     if (isSkills) {
       // Tags/Skills section parser
       const categories = [];
       secLines.forEach(l => {
-        if (l.includes(":")) {
-          const parts = l.split(":");
+        const cleanL = l.replace(/\t/g, " ").trim();
+        if (cleanL.includes(":")) {
+          const parts = cleanL.split(":");
           const label = parts[0].trim();
           const tags = parts.slice(1).join(":").split(",").map(t => t.trim()).filter(t => t.length > 0);
           categories.push({ id: `cat_${Date.now()}_${categories.length}`, label, tags });
         } else {
-          const tags = l.split(",").map(t => t.trim()).filter(t => t.length > 0);
+          const tags = cleanL.split(",").map(t => t.trim()).filter(t => t.length > 0);
           if (tags.length > 0) {
-            categories.push({ id: `cat_${Date.now()}_${categories.length}`, label: "General", tags });
+            if (categories.length > 0) {
+              categories[categories.length - 1].tags = categories[categories.length - 1].tags.concat(tags);
+            } else {
+              categories.push({ id: `cat_${Date.now()}_${categories.length}`, label: "General", tags });
+            }
           }
         }
       });
-      data.sections.push({
-        id: secId,
-        name: cleanSecName,
-        type: "tags",
-        categories
-      });
+      data.sections.push({ id: secId, name: cleanSecName, type: "tags", categories });
     } else {
-      // List section parser
+      // List section parser (education, experience, projects, etc.)
       const items = [];
       let currentItem = null;
 
+      // Strict date range patterns (avoids matching stray 4-digit numbers)
+      const dateRangeRegex = /(\d{2}\s+\d{4}\s*[-–]\s*(ongoing|present|\d{2}\s+\d{4}))/i;
+      const yearRangeRegex = /(\d{4}\s*[-–]\s*(ongoing|present|\d{4}))/i;
+
       secLines.forEach(l => {
-        const hasBullet = l.includes("•") || l.startsWith("-") || l.startsWith("*");
-        const cleanLine = l.replace(/^[•\-*]\s*/, "").trim();
+        // Inline bullet split (e.g. "ShiShu Teams •Built a video...")
+        if (l.includes("•") && !l.startsWith("•")) {
+          const parts = l.split("•");
+          const titlePart = parts[0].replace(/\t/g, " ").trim();
+          const highlightPart = parts.slice(1).join("•").replace(/\t/g, " ").trim();
+          currentItem = {
+            title: titlePart || "Name / Title",
+            subtitle: "",
+            duration: "",
+            location: "",
+            highlights: [highlightPart]
+          };
+          items.push(currentItem);
+          return;
+        }
+
+        const hasBullet = l.startsWith("•") || /^[-*]\s/.test(l);
+        const cleanLine = l.replace(/^[•\-*]\s*/, "").replace(/\t/g, " ").trim();
         
         if (!cleanLine) return;
 
@@ -1964,44 +2164,99 @@ function parseResumeText(text) {
             items.push(currentItem);
           }
           currentItem.highlights.push(cleanLine);
-        } else {
-          const hasDate = l.match(/\d{2}\s+\d{4}/) || l.includes("ongoing") || l.includes("Present") || l.includes("–") || l.includes("-") || l.match(/\d{4}/);
-          const isNewItem = !currentItem || hasDate || (currentItem.highlights.length > 0 && l.length < 60);
+          return;
+        }
 
-          if (isNewItem) {
-            let title = cleanLine;
-            let dur = "";
-            let loc = "";
-            let sub = "";
+        // Non-bullet line: determine if this starts a new item
+        const hasDateRange = dateRangeRegex.test(l) || yearRangeRegex.test(l);
+        
+        let startsNewItem = false;
+        if (!currentItem) {
+          startsNewItem = true;
+        } else if (hasDateRange) {
+          startsNewItem = true;
+        } else if (secId === "projects" && currentItem.highlights.length > 0 && isLikelyProjectTitle(cleanLine)) {
+          // In projects section: a short title-like line after content signals a new project
+          startsNewItem = true;
+        }
 
-            const dateMatch = l.match(/\d{2}\s+\d{4}\s*[-–]\s*(ongoing|Present|\d{2}\s+\d{4})/i) || 
-                              l.match(/\d{4}\s*[-–]\s*(ongoing|Present|\d{4})/i) || 
-                              l.match(/\d{2}\s+\d{4}\s*–\s*(ongoing|Present|\d{2}\s+\d{4})/i) ||
-                              l.match(/\d{4}/);
+        if (startsNewItem) {
+          let title = "";
+          let dur = "";
+          let loc = "";
+          
+          // Use tab separation to split left-aligned title from right-aligned date/location
+          const tabParts = l.split("\t").map(p => p.trim()).filter(p => p.length > 0);
+          
+          if (tabParts.length >= 2) {
+            title = tabParts[0];
+            const rightPart = tabParts[tabParts.length - 1];
+            const dateMatch = rightPart.match(dateRangeRegex) || rightPart.match(yearRangeRegex);
+            if (dateMatch) {
+              dur = dateMatch[0];
+            } else {
+              loc = rightPart;
+            }
+          } else {
+            title = cleanLine;
+            const dateMatch = l.match(dateRangeRegex) || l.match(yearRangeRegex);
             if (dateMatch) {
               dur = dateMatch[0];
               title = title.replace(dur, "").trim();
             }
+          }
+          
+          title = title.replace(/[-—,\s|]+$/, "").trim();
 
-            const locMatch = title.match(/\b(Greater Noida|Gurugram|Pune|Hyderabad|Ggn|Ggurugram|Noida|Mumbai|Delhi|Bangalore|Bengaluru|TW|Autodesk|Airtel)\b.*/i);
-            if (locMatch) {
-              loc = locMatch[0].trim();
-              title = title.replace(locMatch[0], "").trim();
+          // HEURISTIC: If title is empty or very short, and we have a previous non-bullet line,
+          // it means the title and date were split on consecutive lines due to vertical alignment offsets.
+          if (!title && currentItem) {
+            if (currentItem.highlights.length > 0) {
+              const lastHighlight = currentItem.highlights[currentItem.highlights.length - 1];
+              if (!lastHighlight.includes("•") && lastHighlight.length < 50) {
+                title = currentItem.highlights.pop();
+              }
+            } else if (currentItem.subtitle) {
+              title = currentItem.subtitle;
+              currentItem.subtitle = "";
             }
+          }
 
-            title = title.replace(/[-—,\s|]+$/, "").trim();
-
-            currentItem = {
-              title: title || "Name / Title",
-              subtitle: sub,
-              duration: dur,
-              location: loc,
-              highlights: []
-            };
-            items.push(currentItem);
-          } else {
-            if (!currentItem.subtitle) {
+          currentItem = {
+            title: title || "Name / Title",
+            subtitle: "",
+            duration: dur,
+            location: loc,
+            highlights: []
+          };
+          items.push(currentItem);
+        } else {
+          // Continuation line: subtitle, description, or location
+          if (!currentItem.subtitle && currentItem.highlights.length === 0 && !descVerbRegex.test(cleanLine)) {
+            // Likely a subtitle + location line (e.g. "Software Developer  Pune, India")
+            const tabParts = l.split("\t").map(p => p.trim()).filter(p => p.length > 0);
+            if (tabParts.length >= 2) {
+              currentItem.subtitle = tabParts[0];
+              if (!currentItem.location) currentItem.location = tabParts[tabParts.length - 1];
+            } else {
               currentItem.subtitle = cleanLine;
+            }
+          } else {
+            // Description or highlight line
+            if (currentItem.highlights.length > 0) {
+              const lastIdx = currentItem.highlights.length - 1;
+              const lastHighlight = currentItem.highlights[lastIdx];
+              
+              const firstChar = cleanLine.charAt(0);
+              const startsWithLower = firstChar && firstChar === firstChar.toLowerCase() && firstChar !== firstChar.toUpperCase();
+              const startsWithParen = cleanLine.startsWith(')') || cleanLine.startsWith('}');
+              const endsWithSentencePunct = /[.!?;]$/.test(lastHighlight.trim());
+              
+              if (startsWithLower || startsWithParen || !endsWithSentencePunct) {
+                currentItem.highlights[lastIdx] = lastHighlight + " " + cleanLine;
+              } else {
+                currentItem.highlights.push(cleanLine);
+              }
             } else {
               currentItem.highlights.push(cleanLine);
             }
@@ -2009,23 +2264,7 @@ function parseResumeText(text) {
         }
       });
 
-      data.sections.push({
-        id: secId,
-        name: cleanSecName,
-        type: "list",
-        items
-      });
-    }
-  });
-
-  // Ensure default sections are present even if not parsed
-  const defaultIds = ["education", "skills", "projects", "experience", "extracurricular"];
-  defaultIds.forEach(id => {
-    if (!data.sections.some(s => s.id === id)) {
-      const standard = DEFAULT_RESUME_DATA.sections.find(s => s.id === id);
-      if (standard) {
-        data.sections.push(JSON.parse(JSON.stringify(standard)));
-      }
+      data.sections.push({ id: secId, name: cleanSecName, type: "list", items });
     }
   });
 
@@ -2152,42 +2391,11 @@ async function triggerTestPDFImport() {
       statusInd.innerHTML = '<i class="fa-solid fa-spinner fa-spin"></i> Parsing test PDF...';
     }
     
-    const pdf = await pdfjsLib.getDocument({ data: arrayBuffer }).promise;
-    let fullText = "";
-    for (let i = 1; i <= pdf.numPages; i++) {
-      const page = await pdf.getPage(i);
-      const textContent = await page.getTextContent();
-      const items = textContent.items;
-      const linesMap = {};
-      items.forEach(item => {
-        if (!item.str.trim()) return;
-        const x = item.transform[4];
-        const y = item.transform[5];
-        let foundLineYStr = null;
-        for (const lineYStr in linesMap) {
-          const lineY = parseFloat(lineYStr);
-          if (Math.abs(lineY - y) < 5) {
-            foundLineYStr = lineYStr;
-            break;
-          }
-        }
-        if (foundLineYStr !== null) {
-          linesMap[foundLineYStr].push({ text: item.str, x: x });
-        } else {
-          linesMap[y] = [{ text: item.str, x: x }];
-        }
-      });
-      const sortedYKeys = Object.keys(linesMap).map(Number).sort((a, b) => b - a);
-      let pageText = "";
-      sortedYKeys.forEach(yKey => {
-        const lineItems = linesMap[yKey];
-        lineItems.sort((a, b) => a.x - b.x);
-        const lineText = lineItems.map(item => item.text).join(" ");
-        pageText += lineText + "\n";
-      });
-      fullText += pageText + "\n";
+    if (statusInd) {
+      statusInd.innerHTML = '<i class="fa-solid fa-spinner fa-spin"></i> Parsing test PDF...';
     }
     
+    const fullText = await extractTextFromPDF(arrayBuffer);
     const parsedData = parseResumeText(fullText);
     if (await showCustomConfirm("Import PDF", "We extracted your details from the PDF. Would you like to load this data into the editor? This will overwrite your current draft.", "fa-solid fa-file-pdf", "#3b82f6")) {
       resumeData = parsedData;

@@ -14,8 +14,8 @@
   <link rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/6.4.0/css/all.min.css">
   
   <!-- Custom Stylesheets -->
-  <link rel="stylesheet" href="style.css">
-  <link rel="stylesheet" href="resume.css">
+  <link rel="stylesheet" href="style.css?v=3">
+  <link rel="stylesheet" href="resume.css?v=3">
   
   <!-- PDF.js library for client-side PDF text extraction -->
   <script src="https://cdnjs.cloudflare.com/ajax/libs/pdf.js/3.4.120/pdf.min.js"></script>
@@ -55,6 +55,7 @@
       <nav class="editor-tabs" id="editorTabs">
         <button class="tab-btn active" data-tab="personal"><i class="fa-solid fa-user"></i> Personal</button>
         <div id="dynamicTabs" style="display: contents;"></div>
+        <button class="tab-btn" id="btnTabCreateCustomSection" style="color: #10b981; font-weight: 600;" title="Create custom section"><i class="fa-solid fa-plus"></i> Add Section</button>
         <button class="tab-btn" data-tab="layout"><i class="fa-solid fa-layer-group"></i> Layout</button>
         <button class="tab-btn" data-tab="styling"><i class="fa-solid fa-wand-magic-sparkles"></i> Theme</button>
       </nav>
@@ -300,6 +301,33 @@
     </div>
   </div>
 
-  <script src="script.js"></script>
+  <!-- Custom Section Modal -->
+  <div id="customSectionModal" class="dialog-backdrop" style="display: none;">
+    <div class="custom-dialog">
+      <div class="custom-dialog-header">
+        <i class="fa-solid fa-folder-plus" style="color: #10b981;"></i>
+        <span>Add Custom Section</span>
+      </div>
+      <div class="custom-dialog-body" style="display: flex; flex-direction: column; gap: 16px; margin-bottom: 24px;">
+        <div style="display: flex; flex-direction: column; gap: 6px; align-items: flex-start;">
+          <label style="font-size: 0.85rem; font-weight: 500; color: #94a3b8;">Section Name</label>
+          <input type="text" id="customSecName" placeholder="e.g. Awards, Publications, Volunteering" style="background: rgba(15, 23, 42, 0.6); border: 1px solid rgba(255, 255, 255, 0.15); border-radius: 8px; padding: 10px; color: white; font-size: 0.9rem; outline: none; width: 100%; box-sizing: border-box;">
+        </div>
+        <div style="display: flex; flex-direction: column; gap: 6px; align-items: flex-start;">
+          <label style="font-size: 0.85rem; font-weight: 500; color: #94a3b8;">Section Type</label>
+          <select id="customSecType" style="background: rgba(15, 23, 42, 0.6); border: 1px solid rgba(255, 255, 255, 0.15); border-radius: 8px; padding: 10px; color: white; font-size: 0.9rem; outline: none; width: 100%; box-sizing: border-box; cursor: pointer;">
+            <option value="list">List-based (Education, Experience, Projects, Awards etc.)</option>
+            <option value="tags">Tags/Skills-based (Technical Skills, Languages, Tool sets etc.)</option>
+          </select>
+        </div>
+      </div>
+      <div class="custom-dialog-footer">
+        <button id="customSecBtnCancel" class="dialog-btn-secondary">Cancel</button>
+        <button id="customSecBtnConfirm" class="dialog-btn-primary" style="background: linear-gradient(135deg, #10b981 0%, #059669 100%); box-shadow: 0 4px 12px rgba(16, 185, 129, 0.3); border: none;">Add Section</button>
+      </div>
+    </div>
+  </div>
+
+  <script src="script.js?v=3"></script>
 </body>
 </html>
