@@ -116,9 +116,9 @@ const DEFAULT_DESIGN_DATA = {
   template: "classic",
   font: "font-inter",
   accentColor: "#1a56db",
-  margin: "12",
+  margin: "9",
   fontSize: "11",
-  spacing: "8",
+  spacing: "6",
   lineHeight: "1.2",
   sectionOrder: ["education", "skills", "projects", "experience", "extracurricular", "certifications"],
   sectionVisibility: {
@@ -143,6 +143,7 @@ document.addEventListener("DOMContentLoaded", async () => {
   initFormInputs();
   initListControls();
   initDesignControls();
+  updateDesignUI();
   initZoomAndUtilityControls();
   
   // Initial renders
@@ -497,6 +498,41 @@ function initDesignControls() {
   });
 }
 
+function updateDesignUI() {
+  if (!designData) return;
+  
+  // 1. Template
+  const templateRadios = document.querySelectorAll('input[name="layoutTemplate"]');
+  templateRadios.forEach(radio => {
+    radio.checked = (designData.template === radio.value);
+  });
+  
+  // 2. Font
+  const fontSelect = document.getElementById("selectFont");
+  if (fontSelect) fontSelect.value = designData.font || "font-inter";
+  
+  // 3. Accent Color
+  const colorPicker = document.getElementById("colorAccent");
+  const colorText = document.getElementById("colorAccentText");
+  if (colorPicker) colorPicker.value = designData.accentColor || "#1a56db";
+  if (colorText) colorText.value = designData.accentColor || "#1a56db";
+  
+  // 4. Sliders
+  const sliders = [
+    { id: "rangeMargin", dataKey: "margin", labelVal: "valMargin" },
+    { id: "rangeFontSize", dataKey: "fontSize", labelVal: "valFontSize" },
+    { id: "rangeSpacing", dataKey: "spacing", labelVal: "valSpacing" },
+    { id: "rangeLineHeight", dataKey: "lineHeight", labelVal: "valLineHeight" }
+  ];
+  
+  sliders.forEach(slide => {
+    const el = document.getElementById(slide.id);
+    const label = document.getElementById(slide.labelVal);
+    if (el) el.value = designData[slide.dataKey];
+    if (label) label.textContent = designData[slide.dataKey];
+  });
+}
+
 // Bind Zoom & Import/Export Operations
 function initZoomAndUtilityControls() {
   const canvasWrapper = document.getElementById("canvasWrapper");
@@ -629,33 +665,40 @@ function initZoomAndUtilityControls() {
   // -------------------------------------------------------
   function printSinglePage() {
     const paper = document.getElementById("resumePaper");
-    if (!paper) { window.print(); return; }
+    const wrapper = document.getElementById("resumeContentWrapper");
+    if (!paper || !wrapper) { window.print(); return; }
 
-    // A4 at 96dpi = 210mm × 297mm = 793.7px × 1122.5px
-    // We use the scrollHeight (full content height) vs A4 height
     const A4_HEIGHT_PX = 1122; // 297mm at 96dpi
     const A4_WIDTH_PX  = 794;  // 210mm at 96dpi
 
     // Temporarily reset any current transform to measure true size
     const prevTransform = paper.style.transform;
+    const prevWrapperTransform = wrapper.style.transform;
+    
     paper.style.transform = "scale(1)";
-    paper.style.transformOrigin = "top center";
+    wrapper.style.transform = "none";
 
-    const contentH = paper.scrollHeight;
-    const contentW = paper.scrollWidth;
+    // Convert margin in mm to pixels (1 mm = 3.7795 px)
+    const marginPx = (parseFloat(designData.margin) || 12) * 3.7795;
+    const printableHeightPx = A4_HEIGHT_PX - (2 * marginPx);
+    const printableWidthPx  = A4_WIDTH_PX - (2 * marginPx);
 
-    // Calculate scale to fit within one A4 page
-    const scaleH = A4_HEIGHT_PX / contentH;
-    const scaleW = A4_WIDTH_PX  / contentW;
+    const contentH = wrapper.scrollHeight;
+    const contentW = wrapper.scrollWidth;
+
+    // Calculate scale to fit within the printable area
+    const scaleH = printableHeightPx / contentH;
+    const scaleW = printableWidthPx  / contentW;
     const scale  = Math.min(scaleH, scaleW, 1); // never upscale
 
     // Restore original transform
     paper.style.transform = prevTransform;
+    wrapper.style.transform = prevWrapperTransform;
 
     // Apply scale via CSS variable (picked up by @media print)
     document.documentElement.style.setProperty("--print-scale", scale.toFixed(4));
 
-    // Trigger print, then reset after dialog closes
+    // Trigger print
     window.print();
   }
 
@@ -664,17 +707,28 @@ function initZoomAndUtilityControls() {
   // Handle printing events globally (button or Ctrl+P/Cmd+P shortcuts)
   window.addEventListener("beforeprint", () => {
     const paper = document.getElementById("resumePaper");
-    if (!paper) return;
+    const wrapper = document.getElementById("resumeContentWrapper");
+    if (!paper || !wrapper) return;
     const A4_HEIGHT_PX = 1122;
     const A4_WIDTH_PX  = 794;
     
     const prevTransform = paper.style.transform;
-    paper.style.transform = "scale(1)";
-    const contentH = paper.scrollHeight;
-    const contentW = paper.scrollWidth;
-    paper.style.transform = prevTransform;
+    const prevWrapperTransform = wrapper.style.transform;
     
-    const scale = Math.min(A4_HEIGHT_PX / contentH, A4_WIDTH_PX / contentW, 1);
+    paper.style.transform = "scale(1)";
+    wrapper.style.transform = "none";
+    
+    const marginPx = (parseFloat(designData.margin) || 12) * 3.7795;
+    const printableHeightPx = A4_HEIGHT_PX - (2 * marginPx);
+    const printableWidthPx  = A4_WIDTH_PX - (2 * marginPx);
+
+    const contentH = wrapper.scrollHeight;
+    const contentW = wrapper.scrollWidth;
+    
+    paper.style.transform = prevTransform;
+    wrapper.style.transform = prevWrapperTransform;
+    
+    const scale = Math.min(printableHeightPx / contentH, printableWidthPx / contentW, 1);
     document.documentElement.style.setProperty("--print-scale", scale.toFixed(4));
   });
 
@@ -788,6 +842,12 @@ function initZoomAndUtilityControls() {
         
         if (await showCustomConfirm("Import PDF", "We extracted your details from the PDF. Would you like to load this data into the editor? This will overwrite your current draft.", "fa-solid fa-file-pdf", "#3b82f6")) {
           resumeData = parsedData;
+          // Apply tight, compact margins and spacing for a professional look on import
+          designData.margin = "6";
+          designData.spacing = "2";
+          designData.fontSize = "9.5";
+          designData.lineHeight = "1.15";
+          updateDesignUI();
           syncDesignDataWithSections();
           saveState();
           renderAllForms();
@@ -904,6 +964,11 @@ document.addEventListener("keydown", (e) => {
     }
   }
 });
+
+  window.updateResumeData = (d) => { resumeData = d; };
+  window.saveState = saveState;
+  window.syncDesignDataWithSections = syncDesignDataWithSections;
+  window.saveDesignState = () => { localStorage.setItem("resume_builder_design", JSON.stringify(designData)); };
 
 // Populate form control values on initial load or reset
 function renderAllForms() {
@@ -1041,6 +1106,18 @@ function renderSkillsForm(sec) {
   });
 }
 
+function getIconClass(id) {
+  const mapping = {
+    education: "fa-graduation-cap",
+    skills: "fa-screwdriver-wrench",
+    experience: "fa-briefcase",
+    projects: "fa-laptop-code",
+    extracurricular: "fa-award",
+    certifications: "fa-certificate"
+  };
+  return mapping[id] || "fa-folder-open";
+}
+
 function renderDynamicTabsAndPanels() {
   const tabsContainer = document.getElementById("dynamicTabs");
   const panelsContainer = document.getElementById("dynamicPanels");
@@ -1052,17 +1129,6 @@ function renderDynamicTabsAndPanels() {
   tabsContainer.innerHTML = "";
   panelsContainer.innerHTML = "";
 
-  function getIconClass(id) {
-    const mapping = {
-      education: "fa-graduation-cap",
-      skills: "fa-screwdriver-wrench",
-      experience: "fa-briefcase",
-      projects: "fa-laptop-code",
-      extracurricular: "fa-award",
-      certifications: "fa-certificate"
-    };
-    return mapping[id] || "fa-folder-open";
-  }
 
   resumeData.sections.forEach(sec => {
     const btn = document.createElement("button");
@@ -1114,7 +1180,7 @@ function bindTabNavigationHandlers() {
 function renderSkillsFormMarkup(panel, sec) {
   panel.innerHTML = `
     <div class="panel-header-action">
-      <h2>${sec.name}</h2>
+      <input type="text" class="section-title-input" value="${escHtml(sec.name)}" data-sec="${sec.id}" title="Click to rename section">
       <div style="display: flex; gap: 8px;">
         <button class="btn btn-small btn-secondary btn-add-skill-category" data-sec="${sec.id}"><i class="fa-solid fa-plus"></i> Add Category</button>
         <button class="btn btn-small btn-danger btn-delete-section" data-sec="${sec.id}" title="Delete whole section"><i class="fa-solid fa-trash"></i></button>
@@ -1122,6 +1188,26 @@ function renderSkillsFormMarkup(panel, sec) {
     </div>
     <div class="skill-categories-list" id="skills-list-${sec.id}"></div>
   `;
+
+  const titleInput = panel.querySelector(".section-title-input");
+  if (titleInput) {
+    titleInput.addEventListener("input", (e) => {
+      const newName = e.target.value.trim();
+      if (newName) {
+        sec.name = newName;
+        const tabBtn = document.querySelector(`.editor-tabs .tab-btn[data-tab="${sec.id}"]`);
+        if (tabBtn) {
+          tabBtn.innerHTML = `<i class="fa-solid ${getIconClass(sec.id)}"></i> ${escHtml(newName)}`;
+        }
+        const orderLabel = document.querySelector(`.section-order-row[data-key="${sec.id}"] .section-row-label`);
+        if (orderLabel) {
+          orderLabel.textContent = newName;
+        }
+        saveState();
+        renderPreview();
+      }
+    });
+  }
 
   panel.querySelector(".btn-delete-section").addEventListener("click", async (e) => {
     const sId = e.currentTarget.dataset.sec;
@@ -1155,7 +1241,7 @@ function renderListFormMarkup(panel, sec) {
 
   panel.innerHTML = `
     <div class="panel-header-action">
-      <h2>${sec.name}</h2>
+      <input type="text" class="section-title-input" value="${escHtml(sec.name)}" data-sec="${sec.id}" title="Click to rename section">
       <div style="display: flex; gap: 8px;">
         <button class="btn btn-small btn-secondary btn-add-item" data-sec="${sec.id}"><i class="fa-solid fa-plus"></i> Add Item</button>
         <button class="btn btn-small btn-danger btn-delete-section" data-sec="${sec.id}" title="Delete whole section"><i class="fa-solid fa-trash"></i></button>
@@ -1163,6 +1249,41 @@ function renderListFormMarkup(panel, sec) {
     </div>
     <div class="list-container" id="list-${sec.id}"></div>
   `;
+
+  const titleInput = panel.querySelector(".section-title-input");
+  if (titleInput) {
+    titleInput.addEventListener("input", (e) => {
+      const newName = e.target.value.trim();
+      if (newName) {
+        sec.name = newName;
+        const tabBtn = document.querySelector(`.editor-tabs .tab-btn[data-tab="${sec.id}"]`);
+        if (tabBtn) {
+          tabBtn.innerHTML = `<i class="fa-solid ${getIconClass(sec.id)}"></i> ${escHtml(newName)}`;
+        }
+        const orderLabel = document.querySelector(`.section-order-row[data-key="${sec.id}"] .section-row-label`);
+        if (orderLabel) {
+          orderLabel.textContent = newName;
+        }
+        saveState();
+        renderPreview();
+      }
+    });
+  }
+
+  panel.querySelector(".btn-delete-section").addEventListener("click", async (e) => {
+    const sId = e.currentTarget.dataset.sec;
+    if (await showCustomConfirm("Delete Section", `Are you sure you want to delete the "${sec.name}" section?`)) {
+      const idx = resumeData.sections.findIndex(s => s.id === sId);
+      if (idx !== -1) resumeData.sections.splice(idx, 1);
+      const oIdx = designData.sectionOrder.indexOf(sId);
+      if (oIdx !== -1) designData.sectionOrder.splice(oIdx, 1);
+      const personalTabBtn = document.querySelector('.tab-btn[data-tab="personal"]');
+      if (personalTabBtn) personalTabBtn.click();
+      renderDynamicTabsAndPanels();
+      renderSectionOrderList();
+      saveState();
+    }
+  });
 
   const container = document.getElementById(`list-${sec.id}`);
   if (!container) return;
@@ -1812,6 +1933,8 @@ async function extractTextFromPDF(fileOrArrayBuffer) {
     "WORK HISTORY", "PROFESSIONAL EXPERIENCE", "LINKS", "ABOUT ME"
   ];
 
+  const commonHeadersNormalized = commonHeaders.map(h => h.toUpperCase().replace(/[^A-Z]/g, ""));
+
   for (let i = 1; i <= pdf.numPages; i++) {
     const page = await pdf.getPage(i);
     const textContent = await page.getTextContent();
@@ -1827,8 +1950,8 @@ async function extractTextFromPDF(fileOrArrayBuffer) {
       const x = item.transform[4];
       const y = item.transform[5];
       
-      const itemStrUpper = item.str.trim().toUpperCase();
-      const isCommonHeader = commonHeaders.includes(itemStrUpper);
+      const itemStrNorm = item.str.trim().toUpperCase().replace(/[^A-Z]/g, "");
+      const isCommonHeader = commonHeadersNormalized.includes(itemStrNorm);
 
       // Group items with Y coordinates within a 5-pixel threshold
       let foundLineYStr = null;
@@ -1837,7 +1960,7 @@ async function extractTextFromPDF(fileOrArrayBuffer) {
           const lineY = parseFloat(lineYStr);
           // Never merge normal text with a line containing a common header
           const targetLineItems = linesMap[lineYStr];
-          const hasHeader = targetLineItems.some(ti => commonHeaders.includes(ti.text.trim().toUpperCase()));
+          const hasHeader = targetLineItems.some(ti => commonHeadersNormalized.includes(ti.text.trim().toUpperCase().replace(/[^A-Z]/g, "")));
           if (hasHeader) continue;
 
           if (Math.abs(lineY - y) < 5) {
@@ -1858,20 +1981,55 @@ async function extractTextFromPDF(fileOrArrayBuffer) {
     const sortedYKeys = Object.keys(linesMap).map(Number).sort((a, b) => b - a);
     
     let pageText = "";
+    
+    // 1. Extract link annotations and prepend them as special Link: lines
+    try {
+      const annotations = await page.getAnnotations();
+      if (annotations && annotations.length > 0) {
+        annotations.forEach(annot => {
+          const url = annot.url || annot.unsafeUrl;
+          if (url) {
+            pageText += `Link: ${url}\n`;
+          }
+        });
+      }
+    } catch (err) {
+      console.warn("Could not read annotations for page:", i, err);
+    }
+
     sortedYKeys.forEach(yKey => {
       // Sort items within the same line from left to right (ascending X coordinate)
       const lineItems = linesMap[yKey];
       lineItems.sort((a, b) => a.x - b.x);
       
       // Join items - use tab separator for large X gaps (preserves left/right alignment)
+      // Merge characters that are part of the same word (gap <= 3px)
       let lineText = "";
       lineItems.forEach((item, idx) => {
         if (idx === 0) {
           lineText = item.text;
         } else {
-          const prevEnd = lineItems[idx - 1].x + lineItems[idx - 1].width;
+          const prevItem = lineItems[idx - 1];
+          const prevEnd = prevItem.x + prevItem.width;
           const gap = item.x - prevEnd;
-          lineText += (gap > 30 ? "\t" : " ") + item.text;
+          
+          // Calculate average character width of current and previous items
+          const charCount = (prevItem.text.length + item.text.length) || 2;
+          const avgCharWidth = (prevItem.width + item.width) / charCount;
+          
+          const threshold1 = Math.max(1.5, avgCharWidth * 0.3);
+          const threshold2 = Math.max(6.0, avgCharWidth * 1.1);
+          const tabThreshold = Math.max(25.0, avgCharWidth * 4.0);
+          
+          let spacingChar = "";
+          if (gap > tabThreshold) {
+            spacingChar = "\t";
+          } else if (gap > threshold2) {
+            spacingChar = "  "; // Word boundary in spaced-out text
+          } else if (gap > threshold1) {
+            spacingChar = " ";
+          }
+          lineText += spacingChar + item.text;
         }
       });
       pageText += lineText + "\n";
@@ -1882,7 +2040,71 @@ async function extractTextFromPDF(fileOrArrayBuffer) {
   return fullText;
 }
 
+function splitMergedTokens(text) {
+  const rolePattern = /\b(developer|engineer|intern|manager|analyst|specialist|consultant|architect|lead|director|officer|assistant|associate|adviser|advisor)/i;
+  
+  // Find camelCase transitions like "DeveloperHyderabad" where the left word is a job role
+  let cleaned = text.replace(/([a-z])([A-Z][a-z]+)/g, (match, p1, p2, offset) => {
+    const startOfLine = text.lastIndexOf("\n", offset) + 1;
+    const lineBeforeMatch = text.substring(startOfLine, offset + 1);
+    const lastWordMatch = lineBeforeMatch.match(/([a-zA-Z]+)$/);
+    const leftWord = lastWordMatch ? lastWordMatch[1] : "";
+    if (rolePattern.test(leftWord)) {
+      return p1 + " " + p2;
+    }
+    return match;
+  });
+  
+  // General layout merge splits
+  cleaned = cleaned
+    .replace(/([a-z])(\d)/g, "$1 $2")
+    .replace(/(\d)([A-Z])/g, "$1 $2")
+    .replace(/([%])([A-Z])/g, "$1 $2")
+    .replace(/(\))([A-Z])/g, "$1 $2");
+    
+  return cleaned;
+}
+
+function collapseSpacedLetters(text) {
+  let cleanedText = splitMergedTokens(text);
+
+  return cleanedText.split("\n").map(line => {
+    if (!line.trim()) return "";
+    
+    // Replace tabs or multiple spaces with a word boundary token
+    const wordBoundary = "|||";
+    let s = line.replace(/\t/g, wordBoundary).replace(/ {2,}/g, wordBoundary);
+    
+    // Split by word boundary
+    let parts = s.split(wordBoundary);
+    let newParts = parts.map(part => {
+      let trimmed = part.trim();
+      if (!trimmed) return "";
+      
+      // Count single spaces
+      let spaces = 0;
+      for (let i = 0; i < trimmed.length; i++) {
+        if (trimmed[i] === ' ') spaces++;
+      }
+      
+      // Calculate letters length (excluding spaces)
+      let lettersLen = trimmed.length - spaces;
+      
+      // If it looks like spaced-out letters (e.g. lettersLen / spaces <= 2.1)
+      if (spaces > 0 && (lettersLen / spaces) <= 2.1) {
+        return trimmed.replace(/ /g, "");
+      }
+      return trimmed;
+    });
+    
+    // Rejoin with a single space
+    return newParts.filter(p => p.length > 0).join(" ");
+  }).join("\n");
+}
+
 function cleanPdfText(text) {
+  text = collapseSpacedLetters(text);
+
   // 1. Specific corrections for Bharti Airtel (run before general rules)
   text = text.replace(/\bBhar\s+[XP]\s+Airtel\b/gi, "Bharti Airtel");
   text = text.replace(/\bBhar\s+[XP]\b/gi, "Bharti");
@@ -1913,6 +2135,22 @@ function cleanPdfText(text) {
   // 8. Clean specific misspelled words from font issues
   text = text.replace(/\bsoaware\b/gi, "software");
   text = text.replace(/\bsoLware\b/gi, "software");
+
+  // Heal split email addresses (e.g. "contact.prateekcse 1@gmail.com" -> "contact.prateekcse1@gmail.com")
+  text = text.replace(/\b([a-zA-Z0-9._%+-]+)\s+([a-zA-Z0-9._%+-]+)@([a-zA-Z0-9.-]+\.[a-zA-Z]{2,})\b/g, "$1$2@$3");
+  text = text.replace(/\b([a-zA-Z0-9._%+-]+)@\s+([a-zA-Z0-9.-]+\.[a-zA-Z]{2,})\b/g, "$1@$2");
+
+  // Clean up email icon residues from front of contact details
+  text = text.replace(/\b(?:pe|e|envelope|envel)contact\./gi, "contact.");
+
+  // Separate email from merged contact label/icon (e.g. "taluscpp@gmail.comPhone" -> "taluscpp@gmail.com Phone")
+  text = text.replace(/\b([a-zA-Z0-9._%+-]+@[a-zA-Z0-9.-]+\.(?:com|in|org|net|edu|co|io))\s*(Phone|tihone|Mobile|Cell|Location|GitHub|LinkedIn)/gi, "$1 $2");
+
+  // Standardize spaces around date range dashes (e.g. "01 2024 –06 2024" -> "01 2024 – 06 2024")
+  text = text.replace(/(\b\d{2}|\b\d{4})\s*[-–—]\s*(\b\d{2}|\b\d{4}|\bpresent\b|\bongoing\b)/gi, "$1 – $2");
+
+  // Heal split URLs (e.g. "github.com/ prateek1217" -> "github.com/prateek1217")
+  text = text.replace(/\b(github\.com|linkedin\.com\/in|leetcode\.com|hackerrank\.com)\/\s+([a-zA-Z0-9_-]+)/gi, "$1/$2");
   
   // Clean double spaces
   text = text.replace(/ +/g, " ");
@@ -1940,19 +2178,143 @@ function parseResumeText(text) {
     sections: []
   };
 
-  if (lines.length > 0) {
-    data.personal.name = lines[0];
+  const nonLinkLines = lines.filter(l => !l.startsWith("Link: "));
+  if (nonLinkLines.length > 0) {
+    const firstLine = nonLinkLines[0];
+    const tabParts = firstLine.split(/\t| {2,}/);
+    if (tabParts.length >= 2) {
+      data.personal.name = tabParts[0].trim();
+      data.personal.location = tabParts.slice(1).join(" ").trim();
+    } else if (firstLine.includes(",")) {
+      const parts = firstLine.split(",");
+      const words = parts[0].trim().split(/\s+/);
+      if (words.length > 2) {
+        data.personal.name = words.slice(0, 2).join(" ");
+        data.personal.location = words.slice(2).join(" ") + ", " + parts.slice(1).join(",").trim();
+      } else {
+        data.personal.name = parts[0].trim();
+        data.personal.location = parts.slice(1).join(",").trim();
+      }
+    } else {
+      data.personal.name = firstLine;
+    }
   }
+
 
   const emailRegex = /[a-zA-Z0-9._%+-]+@[a-zA-Z0-9.-]+\.[a-zA-Z]{2,}/g;
   const phoneRegex = /\(?\+?[0-9\(\)\s\-]{8,20}/g;
 
+  const dateRangeRegex = /(\b\d{2}[\/\s]*\d{4}\s*[-–]\s*(\bongoing\b|\bpresent\b|\d{2}[\/\s]*\d{4})\b|\bongoing\b|\bpresent\b)/i;
+  const yearRangeRegex = /(\b\d{4}\s*[-–]\s*(\bongoing\b|\bpresent\b|\d{4})\b)/i;
+  // Matches "Aug 2025 – Present", "January 2024 – June 2025", etc.
+  const monthRangeRegex = /\b(?:Jan(?:uary)?|Feb(?:ruary)?|Mar(?:ch)?|Apr(?:il)?|May|Jun(?:e)?|Jul(?:y)?|Aug(?:ust)?|Sep(?:tember)?|Oct(?:ober)?|Nov(?:ember)?|Dec(?:ember)?)\s+\d{4}\s*[-–]\s*(?:(?:Jan(?:uary)?|Feb(?:ruary)?|Mar(?:ch)?|Apr(?:il)?|May|Jun(?:e)?|Jul(?:y)?|Aug(?:ust)?|Sep(?:tember)?|Oct(?:ober)?|Nov(?:ember)?|Dec(?:ember)?)\s+\d{4}|\bongoing\b|\bpresent\b)/i;
+  const descVerbRegex = /^(built|developed|created|designed|implemented|worked|used|led|managed|deployed|migrated|optimized|integrated|tested|wrote|configured|maintained|analyzed|established|conducted|presented|published|achieved|secured|contributed|improved|spearheaded|architected|launched|delivered|collaborated|refactored|automated|orchestrated|utilized|reduced|increased|streamlined)/i;
+
+  const commonHeaders = [
+    "EDUCATION", "EXPERIENCE", "WORK EXPERIENCE", "PROJECTS", 
+    "SKILLS", "SKILL SET", "TECHNICAL SKILLS", "AWARDS", 
+    "CERTIFICATIONS", "EXTRACURRICULAR", "EXTRACURRICULARS", 
+    "SUMMARY", "PUBLICATIONS", "INTERESTS", "ACHIEVEMENTS",
+    "PATENTS", "LEADERSHIP", "ORGANIZATIONS", "LANGUAGES",
+    "COURSES", "OBJECTIVE", "VOLUNTEERING", "ACTIVITIES",
+    "HACKATHONS", "PROJECT EXPERIENCE", "ACADEMIC PROJECTS",
+    "WORK HISTORY", "PROFESSIONAL EXPERIENCE", "LINKS", "ABOUT ME",
+    "AI/ML INITIATIVES", "INITIATIVES", "PREVIOUS EXPERIENCE"
+  ];
+  const commonHeadersNormalized = commonHeaders.map(h => h.toUpperCase().replace(/[^A-Z]/g, ""));
+
+  let firstHeaderIdx = lines.length;
+  for (let i = 2; i < lines.length; i++) {
+    const line = lines[i].replace(/\t/g, " ").trim();
+    if (!line || line.startsWith("Link: ")) continue;
+    
+    const normLine = line.toUpperCase().replace(/[^A-Z]/g, "");
+    if (commonHeadersNormalized.includes(normLine)) {
+      firstHeaderIdx = i;
+      break;
+    }
+  }
+
   // Scan top rows for contact details
-  const searchLimit = Math.min(lines.length, 12);
+  const searchLimit = Math.min(lines.length, 12, firstHeaderIdx);
   for (let i = 1; i < searchLimit; i++) {
     const line = lines[i];
+    
+    // Parse prepended link annotations first
+    if (line.startsWith("Link: ")) {
+      const url = line.substring(6).trim();
+      const lowerUrl = url.toLowerCase();
+      
+      if (lowerUrl.startsWith("mailto:")) {
+        const email = url.substring(7).trim();
+        if (!data.personal.email || data.personal.email === "your.email@example.com") {
+          data.personal.email = email;
+        }
+      } else if (lowerUrl.includes("linkedin.com")) {
+        const parts = url.split("linkedin.com/in/");
+        const user = parts.length > 1 ? parts[1].split("/")[0].split("?")[0].trim() : "Username";
+        data.personal.linkedin = { username: user, url: url };
+      } else if (lowerUrl.includes("github.com")) {
+        const parts = url.split("github.com/");
+        const user = parts.length > 1 ? parts[1].split("/")[0].split("?")[0].trim() : "Username";
+        data.personal.github = { username: user, url: url };
+      } else if (lowerUrl.includes("leetcode.com")) {
+        const parts = url.split("leetcode.com/");
+        const user = parts.length > 1 ? parts[1].split("/")[0].split("?")[0].trim() : "Username";
+        data.personal.leetcode = { username: user, url: url };
+      } else if (lowerUrl.includes("hackerrank.com")) {
+        const parts = url.split("hackerrank.com/");
+        const user = parts.length > 1 ? parts[1].split("/")[0].split("?")[0].trim() : "Username";
+        data.personal.hackerrank = { username: user, url: url };
+      }
+      continue;
+    }
+
     const lowerLine = line.toLowerCase();
 
+    // 1. Explicit label extraction (highly robust for third-party resumes)
+    const emailMatch = line.match(/Email:\s*([^\s]+)/i);
+    if (emailMatch) {
+      const val = emailMatch[1].replace(/(Phone|Location|GitHub|LinkedIn):.*/i, "").trim();
+      if (!data.personal.email) data.personal.email = val;
+    }
+    
+    const phoneMatch = line.match(/Phone:\s*([^\s]+)/i);
+    if (phoneMatch) {
+      const val = phoneMatch[1].replace(/(Email|Location|GitHub|LinkedIn):.*/i, "").trim();
+      if (!data.personal.phone) data.personal.phone = val;
+    }
+    
+    const locationMatch = line.match(/Location:\s*(.+?)(?=GitHub:|LinkedIn:|Email:|Phone:|$)/i);
+    if (locationMatch) {
+      if (!data.personal.location) data.personal.location = locationMatch[1].trim();
+    }
+    
+    const githubMatch = line.match(/GitHub:\s*(.+?)(?=LinkedIn:|Email:|Phone:|Location:|$)/i);
+    if (githubMatch) {
+      const val = githubMatch[1].trim();
+      const user = val.split("/").pop();
+      if (!data.personal.github.username) {
+        data.personal.github = {
+          username: user,
+          url: val.startsWith("http") ? val : "https://" + val
+        };
+      }
+    }
+    
+    const linkedinMatch = line.match(/LinkedIn:\s*(.+?)(?=GitHub:|Email:|Phone:|Location:|$)/i);
+    if (linkedinMatch) {
+      const val = linkedinMatch[1].trim();
+      const user = val.split("/").pop();
+      if (!data.personal.linkedin.username) {
+        data.personal.linkedin = {
+          username: user,
+          url: val.startsWith("http") ? val : "https://" + val
+        };
+      }
+    }
+
+    // 2. Fallbacks if labels aren't present
     const emails = line.match(emailRegex);
     if (emails && !data.personal.email) {
       data.personal.email = emails[0];
@@ -1963,32 +2325,114 @@ function parseResumeText(text) {
       data.personal.phone = phones[0].trim();
     }
 
-    if (line.includes(",") && !line.match(emailRegex) && !line.match(phoneRegex) && !data.personal.location) {
+    if (line.length <= 60 && line.includes(",") && !line.match(emailRegex) && !line.match(phoneRegex) && !data.personal.location) {
       // Only set as location if it doesn't look like section content
       if (!line.match(/\d{2}\s+\d{4}/) && !lowerLine.includes("university") && !lowerLine.includes("school")) {
         data.personal.location = line.replace(/\t/g, " ").trim();
       }
     }
 
-    if (lowerLine.includes("linkedin") || (lowerLine.includes("anubhav") && lowerLine.includes("talus") && !lowerLine.includes("email"))) {
-      data.personal.linkedin = {
-        username: "Anubhav Talus",
-        url: "https://linkedin.com/in/Anubhav_Talus"
-      };
+    if (lowerLine.includes("linkedin") && !data.personal.linkedin.username) {
+      const parts = line.split("linkedin.com/in/");
+      if (parts.length > 1) {
+        const user = parts[1].trim().split(" ")[0];
+        data.personal.linkedin = {
+          username: user,
+          url: "https://linkedin.com/in/" + user
+        };
+      }
     }
-    if (lowerLine.includes("github") || lowerLine.includes("adbnemesis")) {
-      data.personal.github = {
-        username: "Adbnemesis",
-        url: "https://github.com/Adbnemesis"
-      };
-      data.personal.leetcode = {
-        username: "Adbnemesis",
-        url: "https://leetcode.com/Adbnemesis"
-      };
-      data.personal.hackerrank = {
-        username: "Adbnemesis",
-        url: "https://hackerrank.com/Adbnemesis"
-      };
+    if (lowerLine.includes("github") && !data.personal.github.username) {
+      const parts = line.split("github.com/");
+      if (parts.length > 1) {
+        const user = parts[1].trim().split(" ")[0];
+        data.personal.github = {
+          username: user,
+          url: "https://github.com/" + user
+        };
+      }
+    }
+  }
+
+  // Robust URL / social links parser
+  const allUrls = [];
+  lines.forEach(l => {
+    if (l.startsWith("Link: ")) {
+      allUrls.push(l.substring(6).trim());
+    } else {
+      const urlMatches = l.match(/https?:\/\/[^\s"'()]+/g);
+      if (urlMatches) {
+        urlMatches.forEach(u => allUrls.push(u));
+      }
+    }
+  });
+
+  allUrls.forEach(url => {
+    const lowerUrl = url.toLowerCase();
+    if (lowerUrl.startsWith("mailto:")) {
+      const email = url.substring(7).trim();
+      if (!data.personal.email || data.personal.email === "your.email@example.com") {
+        data.personal.email = email;
+      }
+    } else if (lowerUrl.includes("linkedin.com/in/")) {
+      const parts = url.split("linkedin.com/in/");
+      const user = parts.length > 1 ? parts[1].split("/")[0].split("?")[0].trim() : "";
+      if (user && user !== "Username") {
+        data.personal.linkedin = { username: user, url: url };
+      }
+    } else if (lowerUrl.includes("github.com/")) {
+      const parts = url.split("github.com/");
+      const user = parts.length > 1 ? parts[1].split("/")[0].split("?")[0].trim() : "";
+      if (user && user !== "Username" && user !== "in" && user !== "settings") {
+        data.personal.github = { username: user, url: `https://github.com/${user}` };
+      }
+    } else if (lowerUrl.includes("leetcode.com/")) {
+      let parts = url.split("leetcode.com/");
+      if (parts.length > 1) {
+        let path = parts[1];
+        if (path.startsWith("u/")) path = path.substring(2);
+        const user = path.split("/")[0].split("?")[0].trim();
+        if (user && user !== "Username") {
+          data.personal.leetcode = { username: user, url: `https://leetcode.com/${user}` };
+        }
+      }
+    } else if (lowerUrl.includes("hackerrank.com/")) {
+      const parts = url.split("hackerrank.com/");
+      const user = parts.length > 1 ? parts[1].split("/")[0].split("?")[0].trim() : "";
+      if (user && user !== "Username") {
+        data.personal.hackerrank = { username: user, url: `https://hackerrank.com/${user}` };
+      }
+    }
+  });
+
+  // Extract usernames from text if not populated by URLs
+  if (!data.personal.github.username || !data.personal.linkedin.username) {
+    for (let i = 1; i < searchLimit; i++) {
+      const line = lines[i];
+      if (line.startsWith("Link: ")) continue;
+      
+      const words = line.split(/[\s|•,;()]+/);
+      words.forEach(word => {
+        const cleanedWord = word.trim();
+        if (/^[a-zA-Z0-9_-]{4,20}$/.test(cleanedWord)) {
+          if (/^\d+$/.test(cleanedWord)) return;
+          const normWord = cleanedWord.toLowerCase();
+          const normName = data.personal.name.toLowerCase();
+          if (normName.includes(normWord)) return;
+          const ignoreWords = ["github", "linkedin", "leetcode", "hackerrank", "username", "experience", "education", "projects", "skills", "achievements", "awards", "certifications", "summary", "objective", "extracurricular", "publications", "interests", "hobbies", "phone", "email", "location", "about", "details"];
+          if (ignoreWords.includes(normWord)) return;
+          
+          if (!data.personal.github.username) {
+            data.personal.github = { username: cleanedWord, url: `https://github.com/${cleanedWord}` };
+          }
+          if (!data.personal.linkedin.username) {
+            data.personal.linkedin = { username: cleanedWord, url: `https://linkedin.com/in/${cleanedWord}` };
+          }
+          if (!data.personal.leetcode.username) {
+            data.personal.leetcode = { username: cleanedWord, url: `https://leetcode.com/${cleanedWord}` };
+          }
+        }
+      });
     }
   }
 
@@ -1998,31 +2442,56 @@ function parseResumeText(text) {
 
   // Dynamic Header/Section detection
   const detectedHeaders = [];
-  const commonHeaders = [
-    "EDUCATION", "EXPERIENCE", "WORK EXPERIENCE", "PROJECTS", 
-    "SKILLS", "SKILL SET", "TECHNICAL SKILLS", "AWARDS", 
-    "CERTIFICATIONS", "EXTRACURRICULAR", "EXTRACURRICULARS", 
-    "SUMMARY", "PUBLICATIONS", "INTERESTS", "ACHIEVEMENTS",
-    "PATENTS", "LEADERSHIP", "ORGANIZATIONS", "LANGUAGES",
-    "COURSES", "OBJECTIVE", "VOLUNTEERING", "ACTIVITIES",
-    "HACKATHONS", "PROJECT EXPERIENCE", "ACADEMIC PROJECTS",
-    "WORK HISTORY", "PROFESSIONAL EXPERIENCE", "LINKS", "ABOUT ME"
-  ];
 
   for (let i = 2; i < lines.length; i++) {
     const line = lines[i].replace(/\t/g, " ").trim();
     if (!line) continue;
 
-    const isCommonHeader = commonHeaders.includes(line.toUpperCase());
+    // Ignore direct URL/Link lines
+    if (line.startsWith("Link: ")) continue;
 
-    if (isCommonHeader && 
-        line.length >= 3 && 
-        line.length <= 30 && 
-        !line.includes("•") && !line.startsWith("-") && !line.startsWith("*") &&
-        !line.match(emailRegex) && !line.match(phoneRegex) &&
-        !line.match(/\d{4}/) &&
-        !line.includes(",")
-    ) {
+    // Ignore lines that match the candidate name to prevent it from being parsed as a section header
+    if (data.personal.name) {
+      const normName = data.personal.name.toUpperCase().replace(/[^A-Z]/g, "");
+      const normLine = line.toUpperCase().replace(/[^A-Z]/g, "");
+      if (normName.includes(normLine) || normLine.includes(normName)) {
+        continue;
+      }
+    }
+
+    const lowerLine = line.toLowerCase();
+    
+    // Standalone header checks (length between 3 and 35, no digits, no email/phone etc.)
+    if (line.length < 4 || line.length > 35) continue;
+    if (line.startsWith("•") || line.startsWith("-") || line.startsWith("*")) continue;
+    if (line.match(emailRegex) || line.match(phoneRegex) || lowerLine.includes("http") || lowerLine.includes("github.com") || lowerLine.includes("linkedin.com")) continue;
+    if (/[.!?;:|]/.test(line)) continue;
+    if (/\d/.test(line)) continue;
+
+    const forbidden = [
+      "company", "university", "school", "college", "instit", "academy", "present", "ongoing",
+      "developer", "engineer", "analyst", "manager", "intern", "consultant", "director", "specialist",
+      "india", "usa", "germany", "singapore", "gurugram", "haryana", "noida", "delhi", "mumbai", "pune", "hyderabad", "bangalore"
+    ];
+    if (forbidden.some(word => lowerLine.includes(word))) continue;
+
+    const normLine = line.toUpperCase().replace(/[^A-Z]/g, "");
+    let isHeader = false;
+    for (const hNorm of commonHeadersNormalized) {
+      if (normLine === hNorm || (hNorm.length >= 6 && (normLine.startsWith(hNorm) || normLine.endsWith(hNorm)))) {
+        isHeader = true;
+        break;
+      }
+    }
+
+    if (!isHeader && line === line.toUpperCase() && line.length >= 5) {
+      const firstWord = lowerLine.split(" ")[0];
+      if (!descVerbRegex.test(firstWord)) {
+        isHeader = true;
+      }
+    }
+
+    if (isHeader) {
       detectedHeaders.push({ name: line, idx: i });
     }
   }
@@ -2035,37 +2504,116 @@ function parseResumeText(text) {
   }
 
   // === Determine content direction (reversed vs normal) ===
-  // Browser-generated PDFs often render section header text AFTER their content
-  // in the PDF text layer (e.g. education items appear before "EDUCATION" header).
-  // Detect this by checking if content lines exist above the first detected header.
   let contentStartLine = -1;
-  
   for (let i = 1; i < detectedHeaders[0].idx; i++) {
-    const line = lines[i].replace(/\t/g, " ");
+    const line = lines[i].replace(/\t/g, " ").trim();
     const lowerLine = line.toLowerCase();
     
-    // Skip lines that are clearly personal/contact info
     if (line.match(emailRegex) || line.match(phoneRegex)) continue;
     if (lowerLine.includes("linkedin") || lowerLine.includes("github")) continue;
     if (lowerLine.includes("leetcode") || lowerLine.includes("hackerrank")) continue;
     if (line.includes("•") || line.includes("✉") || line.includes("cid:")) continue;
-    if (/[\uf000-\ufdff]/.test(line)) continue;
-    if (lowerLine.includes("adbnemesis")) continue;
+    if (line.startsWith("Link: ") || lowerLine.includes("http") || lowerLine.includes("mailto:")) continue;
+    if (/[□\u0000]/.test(line)) continue;
+    // Skip candidate name
+    if (data.personal.name) {
+      const normName = data.personal.name.toUpperCase().replace(/[^A-Z]/g, "");
+      const normLine = line.toUpperCase().replace(/[^A-Z]/g, "");
+      if (normName && normLine && (normName.includes(normLine) || normLine.includes(normName))) continue;
+    }
+    // Skip location-like lines
+    if (/^[A-Za-z\s]+,\s*[A-Za-z\s]+$/.test(line)) continue;
     
-    // First line that looks like content marks the start
     if (i >= 2 && line.length > 10) {
       contentStartLine = i;
       break;
     }
   }
 
-  // If first header has content lines above it → reversed mode
-  const isReversed = contentStartLine !== -1 && (detectedHeaders[0].idx - contentStartLine > 0);
+  // Determine if reversed layout by checking if content starts above first header AND contains dates or bullets
+  let isReversed = false;
+  if (contentStartLine !== -1 && (detectedHeaders[0].idx - contentStartLine > 0)) {
+    let hasSectionIndicator = false;
+    for (let i = contentStartLine; i < detectedHeaders[0].idx; i++) {
+      const l = lines[i];
+      if (dateRangeRegex.test(l) || yearRangeRegex.test(l) || l.trim().startsWith("•") || l.trim().startsWith("-") || l.trim().startsWith("*")) {
+        hasSectionIndicator = true;
+        break;
+      }
+    }
+    isReversed = hasSectionIndicator;
+  }
+
+  // === Dynamic Summary/Objective extraction above first header (if not reversed) ===
+  if (!isReversed && contentStartLine !== -1) {
+    const summaryLines = [];
+    for (let i = contentStartLine; i < detectedHeaders[0].idx; i++) {
+      const line = lines[i].replace(/\t/g, " ").trim();
+      if (!line || line.length <= 3) continue;
+      const lowerLine = line.toLowerCase();
+
+      // Skip personal info lines comprehensively
+      if (line.match(emailRegex) || line.match(phoneRegex)) continue;
+      if (lowerLine.includes("linkedin") || lowerLine.includes("github") || lowerLine.includes("leetcode") || lowerLine.includes("hackerrank")) continue;
+      if (line.startsWith("•") || line.startsWith("-") || line.startsWith("*")) continue;
+      if (line.startsWith("Link: ") || lowerLine.includes("http") || lowerLine.includes("mailto:")) continue;
+      // Skip lines with icon/contact characters
+      if (/[•✉□\u0000]/.test(line)) continue;
+      // Skip lines matching or containing the candidate name
+      if (data.personal.name) {
+        const normName = data.personal.name.toUpperCase().replace(/[^A-Z]/g, "");
+        const normLine = line.toUpperCase().replace(/[^A-Z]/g, "");
+        if (normName && normLine && (normName.includes(normLine) || normLine.includes(normName))) continue;
+      }
+      // Skip lines that look like locations (city, state patterns)
+      if (/^[A-Za-z\s]+,\s*[A-Za-z\s]+$/.test(line)) continue;
+      const locationWords = ["gurugram", "haryana", "noida", "delhi", "mumbai", "pune", "hyderabad", "bangalore", "india", "chennai", "kolkata"];
+      if (locationWords.some(w => lowerLine.includes(w))) continue;
+
+      summaryLines.push(line);
+    }
+
+    if (summaryLines.length > 0) {
+      let mergedSummary = "";
+      summaryLines.forEach(l => {
+        if (mergedSummary) {
+          if (mergedSummary.endsWith("-")) {
+            mergedSummary = mergedSummary.slice(0, -1) + l;
+          } else {
+            mergedSummary += " " + l;
+          }
+        } else {
+          mergedSummary = l;
+        }
+      });
+
+      // Only create a Summary section if the text is genuinely a summary paragraph
+      // (long enough and contains sentence-like structure, not just leftover fragments)
+      const hasProse = /\b(eager|seeking|experienced|professional|skills|passionate|with|and|the|for|in|on|of|to|a|an|developer|engineer|intern|student)\b/i.test(mergedSummary);
+      if (mergedSummary.length > 40 && /[a-z]{3,}/.test(mergedSummary) && hasProse) {
+        const isObjective = /\b(eager|seeking|contribute|obtain|objective|to\s+get|passion)\b/i.test(mergedSummary);
+        const secName = isObjective ? "Objective" : "Summary";
+        const secId = isObjective ? "objective" : "summary";
+        
+        data.sections.push({
+          id: secId,
+          name: secName,
+          type: "list",
+          items: [{
+            title: "",
+            subtitle: "",
+            duration: "",
+            location: "",
+            highlights: [mergedSummary]
+          }]
+        });
+      }
+    }
+  }
 
   // Build section content ranges based on detected direction
   const sectionRanges = [];
   if (isReversed) {
-    // Content appears BEFORE headers (common in browser-generated PDFs)
     detectedHeaders.forEach((header, hIdx) => {
       const start = hIdx === 0 ? contentStartLine : detectedHeaders[hIdx - 1].idx + 1;
       const end = header.idx;
@@ -2074,7 +2622,6 @@ function parseResumeText(text) {
       }
     });
   } else {
-    // Content appears AFTER headers (standard order)
     detectedHeaders.forEach((header, hIdx) => {
       const start = header.idx + 1;
       const end = hIdx < detectedHeaders.length - 1 ? detectedHeaders[hIdx + 1].idx : lines.length;
@@ -2085,7 +2632,6 @@ function parseResumeText(text) {
   }
 
   // Helper: detect description verbs that indicate a highlight line, not a title/subtitle
-  const descVerbRegex = /^(built|developed|created|designed|implemented|worked|used|led|managed|deployed|migrated|optimized|integrated|tested|wrote|configured|maintained|analyzed|established|conducted|presented|published|achieved|secured|contributed|improved|spearheaded|architected|launched|delivered|collaborated|refactored|automated|orchestrated|utilized|reduced|increased|streamlined)/i;
 
   // Parse each section
   sectionRanges.forEach((section, hIdx) => {
@@ -2095,15 +2641,24 @@ function parseResumeText(text) {
 
     const cleanSecName = secName.charAt(0).toUpperCase() + secName.slice(1).toLowerCase();
     
-    // Normalize IDs to standard defaults where applicable
+    // Normalize IDs to standard defaults where applicable (handling spacing issues like "Educa tion")
     let secId = cleanSecName.toLowerCase();
-    if (secId.includes("experience") || secId.includes("work")) secId = "experience";
-    else if (secId.includes("education")) secId = "education";
-    else if (secId.includes("project")) secId = "projects";
-    else if (secId.includes("skill")) secId = "skills";
-    else if (secId.includes("cert")) secId = "certifications";
-    else if (secId.includes("extra") || secId.includes("achievement") || secId.includes("award")) secId = "extracurricular";
+    const normalizedSecId = secId.replace(/[^a-z]/g, "");
+    if (normalizedSecId.includes("experience") || normalizedSecId.includes("work")) secId = "experience";
+    else if (normalizedSecId.includes("education")) secId = "education";
+    else if (normalizedSecId.includes("project")) secId = "projects";
+    else if (normalizedSecId.includes("skill")) secId = "skills";
+    else if (normalizedSecId.includes("cert")) secId = "certifications";
+    else if (normalizedSecId.includes("extra") || normalizedSecId.includes("achievement") || normalizedSecId.includes("award")) secId = "extracurricular";
     else secId = "sec_" + Date.now() + "_" + hIdx;
+
+    // Ensure unique IDs
+    let baseId = secId;
+    let counter = 1;
+    while (data.sections.some(s => s.id === secId)) {
+      secId = baseId + "_" + counter;
+      counter++;
+    }
 
     if (isSkills) {
       // Tags/Skills section parser
@@ -2132,14 +2687,11 @@ function parseResumeText(text) {
       const items = [];
       let currentItem = null;
 
-      // Strict date range patterns (avoids matching stray 4-digit numbers)
-      const dateRangeRegex = /(\d{2}\s+\d{4}\s*[-–]\s*(ongoing|present|\d{2}\s+\d{4}))/i;
-      const yearRangeRegex = /(\d{4}\s*[-–]\s*(ongoing|present|\d{4}))/i;
-
       secLines.forEach(l => {
+        const trimmedL = l.trim();
         // Inline bullet split (e.g. "ShiShu Teams •Built a video...")
-        if (l.includes("•") && !l.startsWith("•")) {
-          const parts = l.split("•");
+        if (trimmedL.includes("•") && !trimmedL.startsWith("•")) {
+          const parts = trimmedL.split("•");
           const titlePart = parts[0].replace(/\t/g, " ").trim();
           const highlightPart = parts.slice(1).join("•").replace(/\t/g, " ").trim();
           currentItem = {
@@ -2153,8 +2705,8 @@ function parseResumeText(text) {
           return;
         }
 
-        const hasBullet = l.startsWith("•") || /^[-*]\s/.test(l);
-        const cleanLine = l.replace(/^[•\-*]\s*/, "").replace(/\t/g, " ").trim();
+        const hasBullet = trimmedL.startsWith("•") || /^[•\-*▪◦■●✦⁃✓]\s*/.test(trimmedL) || /^[•\-*▪◦■●✦⁃✓]/.test(trimmedL);
+        const cleanLine = trimmedL.replace(/^[•\-*▪◦■●✦⁃✓]\s*/, "").replace(/\t/g, " ").trim();
         
         if (!cleanLine) return;
 
@@ -2168,15 +2720,33 @@ function parseResumeText(text) {
         }
 
         // Non-bullet line: determine if this starts a new item
-        const hasDateRange = dateRangeRegex.test(l) || yearRangeRegex.test(l);
+        const hasDateRange = dateRangeRegex.test(l) || yearRangeRegex.test(l) || monthRangeRegex.test(l);
         
         let startsNewItem = false;
         if (!currentItem) {
           startsNewItem = true;
         } else if (hasDateRange) {
-          startsNewItem = true;
-        } else if (secId === "projects" && currentItem.highlights.length > 0 && isLikelyProjectTitle(cleanLine)) {
-          // In projects section: a short title-like line after content signals a new project
+          // Only start a new item if the current item already has some content (duration, subtitle, or highlights)
+          if (currentItem.duration || currentItem.subtitle || currentItem.highlights.length > 0) {
+            startsNewItem = true;
+          } else {
+            // Otherwise, we will just update the current item's duration!
+            const dateMatch = l.match(monthRangeRegex) || l.match(dateRangeRegex) || l.match(yearRangeRegex);
+            if (dateMatch) {
+              currentItem.duration = dateMatch[0];
+            }
+          }
+        } else if (secId === "projects" && currentItem.highlights.length > 0) {
+          const lastHighlight = currentItem.highlights[currentItem.highlights.length - 1];
+          const endsWithSentencePunct = /[.!?;]$/.test(lastHighlight.trim());
+          if (endsWithSentencePunct && isLikelyProjectTitle(cleanLine)) {
+            // In projects section: a short title-like line after content signals a new project
+            startsNewItem = true;
+          }
+        }
+        
+        // A project title containing a pipe separator always starts a new item
+        if (secId === "projects" && cleanLine.includes("|")) {
           startsNewItem = true;
         }
 
@@ -2184,6 +2754,7 @@ function parseResumeText(text) {
           let title = "";
           let dur = "";
           let loc = "";
+          let subtitleVal = "";
           
           // Use tab separation to split left-aligned title from right-aligned date/location
           const tabParts = l.split("\t").map(p => p.trim()).filter(p => p.length > 0);
@@ -2191,22 +2762,64 @@ function parseResumeText(text) {
           if (tabParts.length >= 2) {
             title = tabParts[0];
             const rightPart = tabParts[tabParts.length - 1];
-            const dateMatch = rightPart.match(dateRangeRegex) || rightPart.match(yearRangeRegex);
+            const dateMatch = rightPart.match(monthRangeRegex) || rightPart.match(dateRangeRegex) || rightPart.match(yearRangeRegex);
             if (dateMatch) {
               dur = dateMatch[0];
+              const remainingRight = rightPart.replace(dur, "").trim().replace(/\s+(?:Jan(?:uary)?|Feb(?:ruary)?|Mar(?:ch)?|Apr(?:il)?|May|Jun(?:e)?|Jul(?:y)?|Aug(?:ust)?|Sep(?:tember)?|Oct(?:ober)?|Nov(?:ember)?|Dec(?:ember)?)\s*$/i, "").trim().replace(/[-—,\s|]+$/, "").trim();
+              if (remainingRight) {
+                loc = remainingRight;
+              }
             } else {
               loc = rightPart;
             }
+            
+            if (tabParts.length >= 3) {
+              subtitleVal = tabParts[1];
+              // Check if title is a degree, if so, swap them
+              const degreeRegex = /^(btech|be|mtech|ms|phd|bsc|msc|ba|ma|bba|mba|bachelor|master|doctor|12th|10th|diploma|graduate)/i;
+              const normTitle = title.toLowerCase().replace(/[^a-z0-9]/g, "");
+              if (degreeRegex.test(normTitle)) {
+                title = tabParts[1];
+                subtitleVal = tabParts[0];
+              }
+            }
           } else {
             title = cleanLine;
-            const dateMatch = l.match(dateRangeRegex) || l.match(yearRangeRegex);
+            const dateMatch = l.match(monthRangeRegex) || l.match(dateRangeRegex) || l.match(yearRangeRegex);
             if (dateMatch) {
               dur = dateMatch[0];
               title = title.replace(dur, "").trim();
+              title = title.replace(/\s+(?:Jan(?:uary)?|Feb(?:ruary)?|Mar(?:ch)?|Apr(?:il)?|May|Jun(?:e)?|Jul(?:y)?|Aug(?:ust)?|Sep(?:tember)?|Oct(?:ober)?|Nov(?:ember)?|Dec(?:ember)?)\s*$/i, "").trim();
             }
           }
           
           title = title.replace(/[-—,\s|]+$/, "").trim();
+
+          // Extract location from title if any (e.g. "Indian Institute of Information Technology, Kota, Rajasthan")
+          const locMatch = title.match(/\s+([A-Z][A-Za-z\s]{1,20}(?:,\s*[A-Za-z\s]{1,20}){1,3})$/);
+          if (locMatch && locMatch[1].length < 35 && locMatch[1].includes(",")) {
+            let locStr = locMatch[1].trim();
+            
+            // Trim role words from start of location string
+            const roleWords = ["developer", "engineer", "intern", "analyst", "manager", "specialist", "consultant", "architect", "lead", "director", "officer", "assistant", "associate", "adviser", "advisor"];
+            let words = locStr.split(/\s+/);
+            while (words.length > 1 && roleWords.includes(words[0].toLowerCase())) {
+              words = words.slice(1);
+            }
+            locStr = words.join(" ");
+            
+            // Trim forbidden starts (like "Technology", "University") from location string
+            const forbiddenStart = ["technology", "university", "school", "college", "institute", "academy", "dept", "department", "engineering", "science", "arts", "information", "computer"];
+            const firstWord = locStr.split(",")[0].trim().toLowerCase();
+            if (forbiddenStart.some(w => firstWord.includes(w)) && locStr.includes(",")) {
+              const parts = locStr.split(",", 2);
+              locStr = parts[1].trim();
+            }
+            
+            loc = locStr;
+            title = title.slice(0, title.lastIndexOf(locStr)).trim();
+            title = title.replace(/[-—,\s|]+$/, "").trim();
+          }
 
           // HEURISTIC: If title is empty or very short, and we have a previous non-bullet line,
           // it means the title and date were split on consecutive lines due to vertical alignment offsets.
@@ -2224,7 +2837,7 @@ function parseResumeText(text) {
 
           currentItem = {
             title: title || "Name / Title",
-            subtitle: "",
+            subtitle: subtitleVal,
             duration: dur,
             location: loc,
             highlights: []
@@ -2232,14 +2845,124 @@ function parseResumeText(text) {
           items.push(currentItem);
         } else {
           // Continuation line: subtitle, description, or location
+          
+          // Extract date range from continuation line if not set yet (e.g. B.Tech details line containing the date range)
+          const dateMatch = cleanLine.match(monthRangeRegex) || cleanLine.match(dateRangeRegex) || cleanLine.match(yearRangeRegex);
+          if (dateMatch && !currentItem.duration) {
+            currentItem.duration = dateMatch[0];
+            cleanLine = cleanLine.replace(dateMatch[0], "").trim();
+            // Strip trailing month name if any
+            cleanLine = cleanLine.replace(/\s+(?:Jan(?:uary)?|Feb(?:ruary)?|Mar(?:ch)?|Apr(?:il)?|May|Jun(?:e)?|Jul(?:y)?|Aug(?:ust)?|Sep(?:tember)?|Oct(?:ober)?|Nov(?:ember)?|Dec(?:ember)?)\s*$/i, "").trim();
+            cleanLine = cleanLine.replace(/[-—,\s|]+$/, "").trim();
+          }
+
           if (!currentItem.subtitle && currentItem.highlights.length === 0 && !descVerbRegex.test(cleanLine)) {
-            // Likely a subtitle + location line (e.g. "Software Developer  Pune, India")
-            const tabParts = l.split("\t").map(p => p.trim()).filter(p => p.length > 0);
-            if (tabParts.length >= 2) {
-              currentItem.subtitle = tabParts[0];
-              if (!currentItem.location) currentItem.location = tabParts[tabParts.length - 1];
+            // Degree swap check: if current item's title is a degree, swap title & subtitle so school is title
+            const degreeRegex = /^(btech|be|mtech|ms|phd|bsc|msc|ba|ma|bba|mba|bachelor|master|doctor|12th|10th|diploma|graduate)/i;
+            const normTitle = currentItem.title.toLowerCase().replace(/[^a-z0-9]/g, "");
+            if (degreeRegex.test(normTitle)) {
+              const degreeText = currentItem.title;
+              currentItem.title = cleanLine;
+              currentItem.subtitle = degreeText;
+              
+              // Extract location from the new title (school name)
+              const locMatch = currentItem.title.match(/\s+([A-Z][A-Za-z\s]{1,20}(?:,\s*[A-Za-z\s]{1,20}){1,3})$/);
+              if (locMatch && locMatch[1].length < 35 && locMatch[1].includes(",")) {
+                let locStr = locMatch[1].trim();
+                
+                // Trim role words from start of location string
+                const roleWords = ["developer", "engineer", "intern", "analyst", "manager", "specialist", "consultant", "architect", "lead", "director", "officer", "assistant", "associate", "adviser", "advisor"];
+                let words = locStr.split(/\s+/);
+                while (words.length > 1 && roleWords.includes(words[0].toLowerCase())) {
+                  words = words.slice(1);
+                }
+                locStr = words.join(" ");
+                
+                const forbiddenStart = ["technology", "university", "school", "college", "institute", "academy", "dept", "department", "engineering", "science", "arts", "information", "computer"];
+                const firstWord = locStr.split(",")[0].trim().toLowerCase();
+                if (forbiddenStart.some(w => firstWord.includes(w)) && locStr.includes(",")) {
+                  const parts = locStr.split(",", 2);
+                  locStr = parts[1].trim();
+                }
+                currentItem.location = locStr;
+                currentItem.title = currentItem.title.slice(0, currentItem.title.lastIndexOf(locStr)).trim();
+                currentItem.title = currentItem.title.replace(/[-—,\s|]+$/, "").trim();
+              }
             } else {
-              currentItem.subtitle = cleanLine;
+              // Standard subtitle + location line (e.g. "Software Developer  Pune, India")
+              const tabParts = l.split("\t").map(p => p.trim()).filter(p => p.length > 0);
+              if (tabParts.length >= 2) {
+                // Join them and run location extraction
+                const joined = tabParts.join(" ");
+                const locMatch = joined.match(/\s+([A-Z][A-Za-z\s]{1,20}(?:,\s*[A-Za-z\s]{1,20}){1,3})$/);
+                if (locMatch && !currentItem.location && locMatch[1].length < 35 && locMatch[1].includes(",")) {
+                  let locStr = locMatch[1].trim();
+                  
+                  // Trim role words from start of location string
+                  const roleWords = ["developer", "engineer", "intern", "analyst", "manager", "specialist", "consultant", "architect", "lead", "director", "officer", "assistant", "associate", "adviser", "advisor"];
+                  let words = locStr.split(/\s+/);
+                  while (words.length > 1 && roleWords.includes(words[0].toLowerCase())) {
+                    words = words.slice(1);
+                  }
+                  locStr = words.join(" ");
+                  
+                  const forbiddenStart = ["technology", "university", "school", "college", "institute", "academy", "dept", "department", "engineering", "science", "arts", "information", "computer"];
+                  const firstWord = locStr.split(",")[0].trim().toLowerCase();
+                  if (forbiddenStart.some(w => firstWord.includes(w)) && locStr.includes(",")) {
+                    const parts = locStr.split(",", 2);
+                    locStr = parts[1].trim();
+                  }
+
+                  const subtitleStr = joined.slice(0, joined.lastIndexOf(locStr)).trim();
+                  if (subtitleStr.length > 5) {
+                    currentItem.subtitle = subtitleStr.replace(/[-—,\s|]+$/, "").trim();
+                    currentItem.location = locStr;
+                  } else {
+                    currentItem.subtitle = joined;
+                  }
+                } else {
+                  // Fallback for single-word location after tab (e.g. "Software Developer \t Pune")
+                  const lastPart = tabParts[tabParts.length - 1];
+                  const isRoleWord = /\b(developer|engineer|intern|manager|analyst|specialist|consultant|architect|lead)\b/i.test(lastPart);
+                  if (!isRoleWord && /^[A-Z][A-Za-z\s]{2,15}$/.test(lastPart)) {
+                    currentItem.subtitle = tabParts.slice(0, -1).join(" ");
+                    currentItem.location = lastPart;
+                  } else {
+                    currentItem.subtitle = joined;
+                  }
+                }
+              } else {
+                // Try to extract trailing location from subtitle (e.g. "B.Tech - CGPA - 8.44 Greater Noida, UP, India")
+                const locMatch = cleanLine.match(/\s+([A-Z][A-Za-z\s]{1,20}(?:,\s*[A-Za-z\s]{1,20}){1,3})$/);
+                if (locMatch && !currentItem.location && locMatch[1].length < 35 && locMatch[1].includes(",")) {
+                  let locStr = locMatch[1].trim();
+                  
+                  // Trim role words from start of location string
+                  const roleWords = ["developer", "engineer", "intern", "analyst", "manager", "specialist", "consultant", "architect", "lead", "director", "officer", "assistant", "associate", "adviser", "advisor"];
+                  let words = locStr.split(/\s+/);
+                  while (words.length > 1 && roleWords.includes(words[0].toLowerCase())) {
+                    words = words.slice(1);
+                  }
+                  locStr = words.join(" ");
+                  
+                  const forbiddenStart = ["technology", "university", "school", "college", "institute", "academy", "dept", "department", "engineering", "science", "arts", "information", "computer"];
+                  const firstWord = locStr.split(",")[0].trim().toLowerCase();
+                  if (forbiddenStart.some(w => firstWord.includes(w)) && locStr.includes(",")) {
+                    const parts = locStr.split(",", 2);
+                    locStr = parts[1].trim();
+                  }
+
+                  const subtitleStr = cleanLine.slice(0, cleanLine.lastIndexOf(locStr)).trim();
+                  if (subtitleStr.length > 5) {
+                    currentItem.subtitle = subtitleStr.replace(/[-—,\s|]+$/, "").trim();
+                    currentItem.location = locStr;
+                  } else {
+                    currentItem.subtitle = cleanLine;
+                  }
+                } else {
+                  currentItem.subtitle = cleanLine;
+                }
+              }
             }
           } else {
             // Description or highlight line
@@ -2399,6 +3122,13 @@ async function triggerTestPDFImport() {
     const parsedData = parseResumeText(fullText);
     if (await showCustomConfirm("Import PDF", "We extracted your details from the PDF. Would you like to load this data into the editor? This will overwrite your current draft.", "fa-solid fa-file-pdf", "#3b82f6")) {
       resumeData = parsedData;
+      // Apply tight, compact margins and spacing for a professional look on import
+      designData.margin = "6";
+      designData.spacing = "2";
+      designData.fontSize = "9.5";
+      designData.lineHeight = "1.15";
+      updateDesignUI();
+      syncDesignDataWithSections();
       saveState();
       renderAllForms();
       await showCustomAlert("Success", "Resume successfully parsed and imported from PDF!", "fa-solid fa-circle-check", "#10b981");
@@ -2414,3 +3144,7 @@ async function triggerTestPDFImport() {
 }
 
 window.triggerTestPDFImport = triggerTestPDFImport;
+window.extractTextFromPDF = extractTextFromPDF;
+window.parseResumeText = parseResumeText;
+window.renderEditor = renderAllForms;
+window.renderPreview = renderPreview;

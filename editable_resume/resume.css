@@ -14,8 +14,7 @@
   font-family: 'Playfair Display', serif;
 }
 .font-playfair p, 
-.font-playfair li, 
-.font-playfair span {
+.font-playfair li {
   font-family: 'Roboto', sans-serif; /* Keep body text clean */
 }
 .font-fira {
@@ -38,6 +37,7 @@
   font-size: 2.2rem;
   font-weight: 700;
   letter-spacing: -0.5px;
+  margin-top: 0 !important;
   margin-bottom: 6px;
   color: #0f172a;
 }
@@ -80,6 +80,9 @@
 .resume-section {
   margin-bottom: var(--section-spacing, 15px);
 }
+.resume-section:last-child {
+  margin-bottom: 0;
+}
 
 .resume-section-title {
   font-size: 1rem;
@@ -87,6 +90,7 @@
   letter-spacing: 1px;
   text-transform: uppercase;
   color: var(--accent-color);
+  margin-top: 0 !important;
   margin-bottom: calc(var(--section-spacing, 8px) * 0.6);
   border-bottom: 1px solid #cbd5e1;
   padding-bottom: 2px;
@@ -299,6 +303,7 @@
   font-weight: 700;
   color: #000000 !important;
   text-transform: uppercase;
+  margin-top: 0 !important;
   margin-bottom: 2px;
   letter-spacing: 0.5px;
 }
