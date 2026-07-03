@@ -902,6 +902,8 @@ body.sidebar-collapsed .toggle-sidebar-btn i {
   .resume-content-wrapper {
     width: 100% !important;
     box-sizing: border-box !important;
+    transform: scale(var(--print-scale, 1)) !important;
+    transform-origin: top center !important;
   }
 
   /* Force background printing for text accents and lines */
@@ -1431,4 +1433,31 @@ body.sidebar-collapsed .toggle-sidebar-btn i {
   height: 16px;
   min-width: 16px;
   padding: 0;
+}
+
+/* Editable Section Titles in Editor Panels */
+.section-title-input {
+  font-size: 1.25rem;
+  font-weight: 600;
+  color: var(--text-dark-primary);
+  background: transparent;
+  border: 1px solid transparent;
+  border-bottom: 2px dashed var(--border-color);
+  padding: 2px 4px;
+  width: 250px;
+  transition: all 0.2s ease;
+  border-radius: 4px;
+}
+
+.section-title-input:hover {
+  background: var(--bg-hover);
+  border-color: var(--border-color);
+}
+
+.section-title-input:focus {
+  background: var(--bg-main);
+  border-color: var(--color-primary);
+  border-bottom-style: solid;
+  outline: none;
+  box-shadow: 0 0 0 3px rgba(var(--accent-color-rgb), 0.1);
 }

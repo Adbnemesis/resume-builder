@@ -46,3 +46,10 @@ pip-delete-this-directory.txt
 
 # Private Personal Data folder
 personal_data/
+
+# Temporary script artifacts
+editable_resume/shubhit_text.txt
+editable_resume/extracted_text.txt
+editable_resume/pypdf_text.txt
+job_results.csv
+scraped_jobs_cache.json
