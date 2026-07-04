@@ -26,7 +26,8 @@
     isGrounded: true,
     yaw: 0,
     width: 0.6,
-    height: 1.9
+    height: 1.9,
+    arrowDrawTime: 0
   };
   
   // Gravity
@@ -58,6 +59,8 @@
   
   // Voxel Arrow Target Shooting
   const arrows = [];
+  const arrowTrails = [];
+  const targetSparks = [];
   const targets = [];
   let score = 0;
   let shootsLeft = 20;
@@ -103,6 +106,9 @@
         initScene();
         console.log('[Voxel Game] Scene initialized.');
         
+        // Lazy start BGM music synth
+        initAudio();
+        
         // Build 3D world based on active resumeData
         try {
           buildWorld();
@@ -137,6 +143,9 @@
   window.close3DResumeGame = function() {
     if (!isGameActive) return;
     isGameActive = false;
+    
+    // Stop background music
+    stopBGM();
     
     // Stop loop
     if (animationFrameId) {
@@ -720,6 +729,9 @@
     shootsLeft--;
     showTicker(`Arrows: ${shootsLeft} | Score: ${score}`);
     
+    // Recoil arm animation state
+    player.arrowDrawTime = 15;
+    
     // Shoot blocky arrow in looking direction
     const arrow = new THREE.Group();
     
@@ -749,6 +761,7 @@
     arrow.rotation.z = arrowPitch;
     
     scene.add(arrow);
+    playShootSound();
     
     const arrowVel = dir.clone().multiplyScalar(0.4); // speed factor
     
@@ -856,6 +869,9 @@
   function handleKeyDown(e) {
     if (!isGameActive) return;
     
+    // Lazy Audio init on user input interaction
+    initAudio();
+    
     const key = e.key.toLowerCase();
     
     if (key === "w" || e.key === "ArrowUp") { keys.w = true; activateKeyVisualizer("w", true); }
@@ -873,6 +889,7 @@
       if (player.isGrounded) {
         player.velocity.y = player.jumpForce;
         player.isGrounded = false;
+        playJumpSound();
       }
     }
     
@@ -906,6 +923,7 @@
   }
 
   function handleMouseDown(e) {
+    initAudio();
     isDragging = true;
     previousMousePosition = { x: e.clientX, y: e.clientY };
   }
@@ -931,6 +949,7 @@
   }
   
   function handleCanvasClick(e) {
+    initAudio();
     // Click fires arrow
     fireArrow();
   }
@@ -978,6 +997,8 @@
     updateLimbAnimations(time);
     updateCloudsMovement();
     updateArrowProjectiles();
+    updateArrowTrails();
+    updateTargetSparks();
     updateTargetRotations(time);
     updateBowlingMechanics();
     updatePortalDoorsAnimation();
@@ -1069,10 +1090,28 @@
     }
     
     // 4. Boundary walls constraint check
-    if (nextX < roomBounds.minX) nextX = roomBounds.minX;
-    if (nextX > roomBounds.maxX) nextX = roomBounds.maxX;
-    if (nextZ < roomBounds.minZ) nextZ = roomBounds.minZ;
-    if (nextZ > roomBounds.maxZ) nextZ = roomBounds.maxZ;
+    // Allow passage into the Bowling alley room on the West side if Z is between -4.5 and 4.5
+    const isEnteringBowling = (nextX < -13.8 && Math.abs(nextZ) < 4.5) || (player.position.x < -13.8);
+    
+    if (isEnteringBowling) {
+      // Bounds inside the bowling area
+      if (nextX < -28.0) nextX = -28.0;
+      if (nextX > -14.0 && Math.abs(nextZ) >= 4.5) nextX = -14.0; // Block returning except via gap
+      if (nextZ < -18.5) nextZ = -18.5;
+      if (nextZ > 5.5) nextZ = 5.5;
+    } else {
+      // Standard room boundary walls constraint check
+      if (nextX < roomBounds.minX) {
+        if (Math.abs(nextZ) < 4.2) {
+          // Allow transition corridor
+        } else {
+          nextX = roomBounds.minX;
+        }
+      }
+      if (nextX > roomBounds.maxX) nextX = roomBounds.maxX;
+      if (nextZ < roomBounds.minZ) nextZ = roomBounds.minZ;
+      if (nextZ > roomBounds.maxZ) nextZ = roomBounds.maxZ;
+    }
     
     // Center monolith pedestal column collision (radius 1.5)
     const distToCenter = Math.sqrt(nextX*nextX + nextZ*nextZ);
@@ -1128,6 +1167,18 @@
       leftArmGroup.rotation.x = 0.4;
       rightArmGroup.rotation.x = -0.4;
     }
+    
+    // Shooting / Draw feedback override
+    if (player.arrowDrawTime > 0) {
+      player.arrowDrawTime--;
+      leftArmGroup.rotation.x = -1.3; // extend left arm out to aim
+      leftArmGroup.rotation.y = -0.2;
+      rightArmGroup.rotation.x = -0.5; // pull right hand back
+      rightArmGroup.rotation.y = -0.6;
+    } else {
+      leftArmGroup.rotation.y = 0;
+      rightArmGroup.rotation.y = 0;
+    }
   }
 
   function updateCloudsMovement() {
@@ -1157,6 +1208,14 @@
       const angle = Math.atan2(a.vel.y, Math.sqrt(a.vel.x*a.vel.x + a.vel.z*a.vel.z));
       a.mesh.rotation.z = angle;
       
+      // Spawn trail particle mesh
+      const trailGeo = new THREE.BoxGeometry(0.1, 0.1, 0.1);
+      const trailMat = new THREE.MeshBasicMaterial({ color: 0xffffff, transparent: true, opacity: 0.8 });
+      const trail = new THREE.Mesh(trailGeo, trailMat);
+      trail.position.copy(a.mesh.position);
+      scene.add(trail);
+      arrowTrails.push({ mesh: trail, life: 15, maxLife: 15 });
+      
       a.life--;
       
       // Hit target check (East Wall z range bounds)
@@ -1172,6 +1231,12 @@
           // Play target spin animation
           t.spinSpeed = 0.2;
           hit = true;
+          
+          // Sound effect!
+          playHitSound();
+          
+          // Sparks explosion effect!
+          createSparks(a.mesh.position);
           
           // Calculate score based on center proximity
           const radiusOffset = Math.sqrt(dy*dy + dz*dz);
@@ -1191,6 +1256,64 @@
       if (hit || a.mesh.position.y <= 0.1 || a.life <= 0 || Math.abs(a.mesh.position.x) > 16 || Math.abs(a.mesh.position.z) > 16) {
         scene.remove(a.mesh);
         arrows.splice(i, 1);
+      }
+    }
+  }
+
+  function createSparks(pos) {
+    const sparkGeo = new THREE.BoxGeometry(0.08, 0.08, 0.08);
+    const colors = [0xffaa00, 0x55ff55, 0x00ffff, 0xff5555]; // random chiptune/festive colors
+    
+    for (let i = 0; i < 8; i++) {
+      const color = colors[Math.floor(Math.random() * colors.length)];
+      const sparkMat = new THREE.MeshLambertMaterial({ color: color });
+      const spark = new THREE.Mesh(sparkGeo, sparkMat);
+      spark.position.copy(pos);
+      
+      scene.add(spark);
+      targetSparks.push({
+        mesh: spark,
+        vel: {
+          x: (Math.random() - 0.5) * 0.16,
+          y: (Math.random() * 0.16) + 0.06,
+          z: (Math.random() - 0.5) * 0.16
+        },
+        life: 30,
+        maxLife: 30
+      });
+    }
+  }
+
+  function updateArrowTrails() {
+    for (let i = arrowTrails.length - 1; i >= 0; i--) {
+      const t = arrowTrails[i];
+      t.life--;
+      t.mesh.material.opacity = t.life / t.maxLife;
+      t.mesh.scale.multiplyScalar(0.95);
+      if (t.life <= 0) {
+        scene.remove(t.mesh);
+        t.mesh.geometry.dispose();
+        t.mesh.material.dispose();
+        arrowTrails.splice(i, 1);
+      }
+    }
+  }
+
+  function updateTargetSparks() {
+    for (let i = targetSparks.length - 1; i >= 0; i--) {
+      const s = targetSparks[i];
+      s.mesh.position.x += s.vel.x;
+      s.mesh.position.y += s.vel.y;
+      s.mesh.position.z += s.vel.z;
+      
+      s.vel.y -= 0.005; // gravity pull
+      s.life--;
+      
+      if (s.life <= 0) {
+        scene.remove(s.mesh);
+        s.mesh.geometry.dispose();
+        s.mesh.material.dispose();
+        targetSparks.splice(i, 1);
       }
     }
   }
@@ -1235,6 +1358,7 @@
       
       bowling.physicsActive = true;
       bowling.throwCount++;
+      playKickSound();
       document.getElementById("stat-throws").innerText = bowling.throwCount;
       document.getElementById("hud-bowling").classList.add("active");
       
@@ -1274,6 +1398,7 @@
           pin.toppled = true;
           bowling.pinsDown++;
           bowling.score += 10;
+          playPinFallSound();
           
           // Transfer momentum speed
           pin.velocity.x = (pin.pivot.position.x - ball.position.x) * 0.4 + bowling.ballVelocity.x * 0.3;
@@ -1302,6 +1427,7 @@
             pinB.toppled = true;
             bowling.pinsDown++;
             bowling.score += 10;
+            playPinFallSound();
             
             pinB.velocity.x = pdx * 0.3 + pinA.velocity.x * 0.4;
             pinB.velocity.z = pdz * 0.3 + pinA.velocity.z * 0.4;
@@ -1609,13 +1735,28 @@
     scene = null;
     camera = null;
     renderer = null;
-     playerGroup = null;
-     doorPortals = [];
-     targets.length = 0;
-     arrows.length = 0;
-     parkourBlocks.length = 0;
-     bowling.ball = null;
-     bowling.pins = [];
+    playerGroup = null;
+    doorPortals = [];
+    targets.length = 0;
+    arrows.length = 0;
+    
+    arrowTrails.forEach(t => {
+      scene.remove(t.mesh);
+      if (t.mesh.geometry) t.mesh.geometry.dispose();
+      if (t.mesh.material) t.mesh.material.dispose();
+    });
+    arrowTrails.length = 0;
+    
+    targetSparks.forEach(s => {
+      scene.remove(s.mesh);
+      if (s.mesh.geometry) s.mesh.geometry.dispose();
+      if (s.mesh.material) s.mesh.material.dispose();
+    });
+    targetSparks.length = 0;
+    
+    parkourBlocks.length = 0;
+    bowling.ball = null;
+    bowling.pins = [];
   }
   
   function disposeMaterial(mat) {
@@ -1626,6 +1767,173 @@
     if (mat.specularMap) mat.specularMap.dispose();
     if (mat.envMap) mat.envMap.dispose();
     mat.dispose();
+  }
+
+  // --- RETRO CHIPTUNE SOUND ENGINE (Web Audio API) ---
+  let audioCtx = null;
+  let bgmIntervalId = null;
+  let isMuted = false;
+  
+  // E4, G4, A4, B4, A4, G4, E4, D4, C4, E4, G4, A4, G4, E4, C4, D4
+  const BGM_MELODY = [
+    329.63, 392.00, 440.00, 493.88, 440.00, 392.00, 329.63, 293.66,
+    261.63, 329.63, 392.00, 440.00, 392.00, 329.63, 261.63, 293.66
+  ];
+  let bgmNoteIndex = 0;
+
+  function initAudio() {
+    if (audioCtx) return;
+    const AudioContextClass = window.AudioContext || window.webkitAudioContext;
+    if (!AudioContextClass) return;
+    audioCtx = new AudioContextClass();
+    
+    // Start background music loop
+    startBGM();
+  }
+
+  function startBGM() {
+    if (bgmIntervalId || isMuted) return;
+    
+    bgmNoteIndex = 0;
+    bgmIntervalId = setInterval(() => {
+      if (!audioCtx || isMuted || !isGameActive) return;
+      if (audioCtx.state === "suspended") {
+        audioCtx.resume();
+      }
+      
+      const freq = BGM_MELODY[bgmNoteIndex];
+      bgmNoteIndex = (bgmNoteIndex + 1) % BGM_MELODY.length;
+      
+      playSynthNote(freq, 0.22, "triangle", 0.04);
+    }, 400);
+  }
+
+  function stopBGM() {
+    if (bgmIntervalId) {
+      clearInterval(bgmIntervalId);
+      bgmIntervalId = null;
+    }
+  }
+
+  window.toggleMuteAudio = function() {
+    isMuted = !isMuted;
+    const btn = document.getElementById("btn-mute-game");
+    if (!btn) return;
+    
+    if (isMuted) {
+      btn.innerHTML = '<i class="fa-solid fa-volume-xmark"></i>';
+      btn.style.background = "#bf3f3f"; // turn red stone when muted
+      stopBGM();
+    } else {
+      btn.innerHTML = '<i class="fa-solid fa-volume-high"></i>';
+      btn.style.background = "#565866";
+      initAudio();
+      startBGM();
+    }
+  };
+
+  function playSynthNote(freq, duration, type = "sine", volume = 0.08) {
+    if (!audioCtx || isMuted || audioCtx.state === "suspended") return;
+    try {
+      const osc = audioCtx.createOscillator();
+      const gain = audioCtx.createGain();
+      
+      osc.type = type;
+      osc.frequency.setValueAtTime(freq, audioCtx.currentTime);
+      
+      gain.gain.setValueAtTime(volume, audioCtx.currentTime);
+      gain.gain.exponentialRampToValueAtTime(0.0001, audioCtx.currentTime + duration);
+      
+      osc.connect(gain);
+      gain.connect(audioCtx.destination);
+      osc.start();
+      osc.stop(audioCtx.currentTime + duration);
+    } catch(e){}
+  }
+
+  function playJumpSound() {
+    if (!audioCtx || isMuted) return;
+    try {
+      const osc = audioCtx.createOscillator();
+      const gain = audioCtx.createGain();
+      osc.type = "triangle";
+      osc.frequency.setValueAtTime(140, audioCtx.currentTime);
+      osc.frequency.exponentialRampToValueAtTime(420, audioCtx.currentTime + 0.12);
+      
+      gain.gain.setValueAtTime(0.06, audioCtx.currentTime);
+      gain.gain.exponentialRampToValueAtTime(0.0001, audioCtx.currentTime + 0.12);
+      
+      osc.connect(gain);
+      gain.connect(audioCtx.destination);
+      osc.start();
+      osc.stop(audioCtx.currentTime + 0.12);
+    } catch(e){}
+  }
+
+  function playShootSound() {
+    if (!audioCtx || isMuted) return;
+    try {
+      const osc = audioCtx.createOscillator();
+      const gain = audioCtx.createGain();
+      osc.type = "sawtooth";
+      osc.frequency.setValueAtTime(700, audioCtx.currentTime);
+      osc.frequency.exponentialRampToValueAtTime(80, audioCtx.currentTime + 0.15);
+      
+      gain.gain.setValueAtTime(0.05, audioCtx.currentTime);
+      gain.gain.exponentialRampToValueAtTime(0.0001, audioCtx.currentTime + 0.15);
+      
+      osc.connect(gain);
+      gain.connect(audioCtx.destination);
+      osc.start();
+      osc.stop(audioCtx.currentTime + 0.15);
+    } catch(e){}
+  }
+
+  function playHitSound() {
+    if (!audioCtx || isMuted) return;
+    try {
+      playSynthNote(523.25, 0.08, "sine", 0.08); // C5
+      setTimeout(() => {
+        playSynthNote(659.25, 0.18, "sine", 0.08); // E5
+      }, 60);
+    } catch(e){}
+  }
+
+  function playKickSound() {
+    if (!audioCtx || isMuted) return;
+    try {
+      const osc = audioCtx.createOscillator();
+      const gain = audioCtx.createGain();
+      osc.type = "triangle";
+      osc.frequency.setValueAtTime(100, audioCtx.currentTime);
+      osc.frequency.linearRampToValueAtTime(40, audioCtx.currentTime + 0.22);
+      
+      gain.gain.setValueAtTime(0.15, audioCtx.currentTime);
+      gain.gain.exponentialRampToValueAtTime(0.0001, audioCtx.currentTime + 0.22);
+      
+      osc.connect(gain);
+      gain.connect(audioCtx.destination);
+      osc.start();
+      osc.stop(audioCtx.currentTime + 0.22);
+    } catch(e){}
+  }
+
+  function playPinFallSound() {
+    if (!audioCtx || isMuted) return;
+    try {
+      const osc = audioCtx.createOscillator();
+      const gain = audioCtx.createGain();
+      osc.type = "triangle";
+      osc.frequency.setValueAtTime(240 + Math.random()*80, audioCtx.currentTime);
+      
+      gain.gain.setValueAtTime(0.06, audioCtx.currentTime);
+      gain.gain.exponentialRampToValueAtTime(0.0001, audioCtx.currentTime + 0.12);
+      
+      osc.connect(gain);
+      gain.connect(audioCtx.destination);
+      osc.start();
+      osc.stop(audioCtx.currentTime + 0.12);
+    } catch(e){}
   }
 
   document.addEventListener("DOMContentLoaded", () => {
