@@ -1,0 +1,161 @@
+<!DOCTYPE html>
+<html>
+<head>
+<title>3D Game Debug Test</title>
+<script src="https://cdnjs.cloudflare.com/ajax/libs/three.js/r128/three.min.js"></script>
+<style>
+body { margin: 0; overflow: hidden; background: #000; }
+canvas { display: block; width: 100vw; height: 100vh; }
+#info { position: fixed; top: 10px; left: 10px; color: #0f0; font-family: monospace; font-size: 14px; z-index: 10; background: rgba(0,0,0,0.8); padding: 10px; max-height: 90vh; overflow-y: auto; }
+</style>
+</head>
+<body>
+<div id="info">Loading...</div>
+<canvas id="testCanvas"></canvas>
+<script>
+const info = document.getElementById('info');
+const log = (msg) => { info.innerHTML += '<br>' + msg; console.log(msg); };
+
+try {
+  const canvas = document.getElementById('testCanvas');
+  const w = window.innerWidth;
+  const h = window.innerHeight;
+  log('Canvas: ' + w + 'x' + h);
+
+  // Scene
+  const scene = new THREE.Scene();
+  scene.background = new THREE.Color(0x0a0b16);
+  log('Scene created');
+
+  // Camera at (0, 1.6, 8) looking at origin
+  const camera = new THREE.PerspectiveCamera(65, w / h, 0.1, 100);
+  camera.position.set(0, 1.6, 8);
+  log('Camera at: ' + camera.position.x + ', ' + camera.position.y + ', ' + camera.position.z);
+
+  // Renderer
+  const renderer = new THREE.WebGLRenderer({ canvas: canvas, antialias: true });
+  renderer.setSize(w, h);
+  renderer.setPixelRatio(Math.min(window.devicePixelRatio, 2));
+  log('Renderer: ' + renderer.domElement.width + 'x' + renderer.domElement.height);
+
+  // Lights
+  const ambient = new THREE.AmbientLight(0xccd0ff, 1.2);
+  scene.add(ambient);
+  const dirLight = new THREE.DirectionalLight(0xffffff, 1.0);
+  dirLight.position.set(5, 20, 5);
+  scene.add(dirLight);
+  const pointLight = new THREE.PointLight(0x38bdf8, 2.0, 12);
+  pointLight.position.set(0, 3, 0);
+  scene.add(pointLight);
+  log('Lights added');
+
+  // Floor (grid texture)
+  const floorCanvas = document.createElement('canvas');
+  floorCanvas.width = 256; floorCanvas.height = 256;
+  const ctx = floorCanvas.getContext('2d');
+  ctx.fillStyle = '#0c0d16'; ctx.fillRect(0, 0, 256, 256);
+  ctx.strokeStyle = 'rgba(99, 102, 241, 0.35)'; ctx.lineWidth = 4; ctx.strokeRect(0, 0, 256, 256);
+  const floorTexture = new THREE.CanvasTexture(floorCanvas);
+  floorTexture.wrapS = THREE.RepeatWrapping;
+  floorTexture.wrapT = THREE.RepeatWrapping;
+  floorTexture.repeat.set(20, 20);
+  const floor = new THREE.Mesh(
+    new THREE.PlaneGeometry(60, 60),
+    new THREE.MeshStandardMaterial({ map: floorTexture, roughness: 0.2, metalness: 0.8 })
+  );
+  floor.rotation.x = -Math.PI / 2;
+  scene.add(floor);
+  log('Floor added');
+
+  // Walls (bright enough to see)
+  const wallMat = new THREE.MeshStandardMaterial({ color: 0x2a2a30, roughness: 0.6, metalness: 0.2 });
+  const addWall = (x, y, z, wx, wy, wz) => {
+    const w = new THREE.Mesh(new THREE.BoxGeometry(wx, wy, wz), wallMat);
+    w.position.set(x, y, z);
+    scene.add(w);
+  };
+  addWall(0, 4, -14.5, 30, 8, 1);  // North
+  addWall(0, 4, 14.5, 30, 8, 1);   // South
+  addWall(14.5, 4, 0, 1, 8, 30);   // East
+  addWall(-14.5, 4, -10, 1, 8, 10); // West-N
+  addWall(-14.5, 4, 10, 1, 8, 10);  // West-S
+  log('Walls added');
+
+  // Center Pedestal
+  const baseMat = new THREE.MeshStandardMaterial({ color: 0x3a3a40, roughness: 0.4, metalness: 0.9 });
+  const base = new THREE.Mesh(new THREE.CylinderGeometry(1.2, 1.4, 0.8, 16), baseMat);
+  base.position.y = 0.4;
+  scene.add(base);
+  log('Pedestal added');
+
+  // Crystal
+  const crystalMat = new THREE.MeshStandardMaterial({
+    color: 0x38bdf8, emissive: 0x0369a1, roughness: 0.1, metalness: 0.9, flatShading: true
+  });
+  const crystal = new THREE.Mesh(new THREE.OctahedronGeometry(0.5, 0), crystalMat);
+  crystal.position.y = 2.0;
+  scene.add(crystal);
+  log('Crystal added');
+
+  // Neon bar (MeshBasicMaterial - always visible)
+  const neonBar = new THREE.Mesh(
+    new THREE.BoxGeometry(3.2, 0.15, 0.15),
+    new THREE.MeshBasicMaterial({ color: 0x8b5cf6 })
+  );
+  neonBar.position.set(0, 3.7, -14);
+  scene.add(neonBar);
+  log('Neon bar added');
+
+  log('Total children: ' + scene.children.length);
+
+  // Camera rotation state
+  let yaw = 0, pitch = -0.05;
+  const keys = {};
+  const playerPos = { x: 0, y: 1.6, z: 8 };
+
+  // Keyboard
+  window.addEventListener('keydown', (e) => {
+    keys[e.key.toLowerCase()] = true;
+    log('KEY DOWN: ' + e.key);
+  });
+  window.addEventListener('keyup', (e) => {
+    keys[e.key.toLowerCase()] = false;
+  });
+
+  // Animate
+  function animate() {
+    requestAnimationFrame(animate);
+
+    // Movement
+    const forward = new THREE.Vector3(0, 0, -1);
+    forward.applyAxisAngle(new THREE.Vector3(0, 1, 0), yaw);
+    const right = new THREE.Vector3(1, 0, 0);
+    right.applyAxisAngle(new THREE.Vector3(0, 1, 0), yaw);
+
+    if (keys['w'] || keys['arrowup']) { playerPos.x += forward.x * 0.12; playerPos.z += forward.z * 0.12; }
+    if (keys['s'] || keys['arrowdown']) { playerPos.x -= forward.x * 0.12; playerPos.z -= forward.z * 0.12; }
+    if (keys['a'] || keys['arrowleft']) { playerPos.x -= right.x * 0.12; playerPos.z -= right.z * 0.12; }
+    if (keys['d'] || keys['arrowright']) { playerPos.x += right.x * 0.12; playerPos.z += right.z * 0.12; }
+
+    // Camera quaternion
+    const qYaw = new THREE.Quaternion().setFromAxisAngle(new THREE.Vector3(0, 1, 0), yaw);
+    const qPitch = new THREE.Quaternion().setFromAxisAngle(new THREE.Vector3(1, 0, 0), pitch);
+    camera.quaternion.copy(qYaw).multiply(qPitch);
+    camera.position.set(playerPos.x, playerPos.y, playerPos.z);
+
+    // Rotate crystal
+    crystal.rotation.y += 0.01;
+    crystal.position.y = 2.0 + Math.sin(Date.now() * 0.002) * 0.15;
+
+    renderer.render(scene, camera);
+  }
+  animate();
+  log('Animation loop started');
+
+} catch(err) {
+  log('ERROR: ' + err.message);
+  console.error(err);
+}
+</script>
+</body>
+</html>

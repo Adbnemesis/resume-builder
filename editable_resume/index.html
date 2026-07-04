@@ -14,8 +14,9 @@
   <link rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/6.4.0/css/all.min.css">
   
   <!-- Custom Stylesheets -->
-  <link rel="stylesheet" href="style.css?v=7">
-  <link rel="stylesheet" href="resume.css?v=7">
+  <link rel="stylesheet" href="style.css?v=15">
+  <link rel="stylesheet" href="resume.css?v=15">
+  <link rel="stylesheet" href="game3d.css?v=15">
   
   <!-- PDF.js library for client-side PDF text extraction -->
   <script src="https://cdnjs.cloudflare.com/ajax/libs/pdf.js/3.4.120/pdf.min.js"></script>
@@ -33,6 +34,9 @@
         <div class="action-buttons">
           <button id="btnPrint" class="btn btn-primary" title="Print or Save as PDF">
             <i class="fa-solid fa-print"></i> <span>PDF</span>
+          </button>
+          <button id="btnPlay3D" class="btn" style="background: linear-gradient(135deg, #8b5cf6 0%, #6366f1 100%); color: white; border: none; font-weight: 600;" title="Convert your resume into a playable 3D game">
+            <i class="fa-solid fa-gamepad"></i> <span>3D Game</span>
           </button>
           <button id="btnExport" class="btn btn-secondary" title="Export resume data to a JSON backup file">
             <i class="fa-solid fa-download"></i> <span>Export JSON</span>
@@ -260,6 +264,9 @@
           </div>
         </div>
         <div class="toolbar-actions">
+          <button id="btnPlay3DToolbar" class="btn" title="Convert to 3D Game" style="background: linear-gradient(135deg, #8b5cf6 0%, #6366f1 100%); color: white; border-radius: 6px; padding: 6px 12px; font-size: 0.85rem; font-weight: 600; display: flex; align-items: center; gap: 6px; border: none; cursor: pointer; margin-right: 8px;">
+            <i class="fa-solid fa-gamepad"></i> <span>3D Game</span>
+          </button>
           <button id="btnZoomOut" class="btn btn-icon" title="Zoom Out"><i class="fa-solid fa-magnifying-glass-minus"></i></button>
           <span id="zoomPercent" class="zoom-text">100%</span>
           <button id="btnZoomIn" class="btn btn-icon" title="Zoom In"><i class="fa-solid fa-magnifying-glass-plus"></i></button>
@@ -328,6 +335,115 @@
     </div>
   </div>
 
-  <script src="script.js?v=7"></script>
+  <!-- Three.js library from CDN -->
+  <script src="https://cdnjs.cloudflare.com/ajax/libs/three.js/r128/three.min.js"></script>
+
+  <!-- 3D Game Dialog Modal -->
+  <dialog id="game3d-dialog" closedby="any" aria-label="3D Resume Game">
+    <div class="game-container" id="game-container">
+      <!-- Three.js Canvas -->
+      <canvas id="game3d-canvas"></canvas>
+      
+      <!-- Close Button -->
+      <button class="btn-close-game" onclick="close3DResumeGame()" title="Exit Game Mode">
+        <i class="fa-solid fa-xmark"></i>
+      </button>
+      
+      <!-- Ticker Notification (Top Center) -->
+      <div class="hud-ticker">
+        <i class="fa-solid fa-circle-info"></i>
+        <span id="ticker-text">Loading voxel museum...</span>
+      </div>
+
+      <!-- Voxel Minimap (Top Right) -->
+      <div class="hud-panel hud-minimap-container">
+        <div class="minimap-title"><i class="fa-solid fa-map"></i> MINIMAP</div>
+        <canvas id="game3d-minimap" width="140" height="140"></canvas>
+      </div>
+      
+      <!-- Controls HUD (Top Left) -->
+      <div class="hud-panel hud-controls">
+        <h3><i class="fa-solid fa-gamepad"></i> controls</h3>
+        <div class="control-item">
+          <span>Move Player</span>
+          <span class="control-key">W A S D</span>
+        </div>
+        <div class="control-item">
+          <span>Sprint</span>
+          <span class="control-key">L-Shift</span>
+        </div>
+        <div class="control-item">
+          <span>Jump</span>
+          <span class="control-key">Space</span>
+        </div>
+        <div class="control-item">
+          <span>Shoot Targets</span>
+          <span class="control-key">L-Click / F</span>
+        </div>
+        <div class="control-item">
+          <span>Camera Orbit</span>
+          <span style="font-size:0.75rem; color:#94a3b8;">Drag Mouse</span>
+        </div>
+        
+        <div class="keys-container">
+          <div class="keys-row">
+            <div class="key-box" id="key-w">W</div>
+          </div>
+          <div class="keys-row">
+            <div class="key-box" id="key-a">A</div>
+            <div class="key-box" id="key-s">S</div>
+            <div class="key-box" id="key-d">D</div>
+          </div>
+          <div class="keys-row" style="margin-top: 4px;">
+            <div class="key-box space" id="key-space">SPACE (JUMP)</div>
+          </div>
+        </div>
+      </div>
+      
+      <!-- Resume Section Details HUD (Right Panel) -->
+      <div class="hud-panel hud-details" id="hud-details">
+        <div class="hud-details-header">
+          <h2 id="hud-title">Section Name</h2>
+        </div>
+        <div class="hud-details-content" id="hud-content">
+          <!-- Filled dynamically by game3d.js -->
+        </div>
+      </div>
+      
+      <!-- Bowling HUD (Bottom Center) -->
+      <div class="hud-panel hud-bowling" id="hud-bowling">
+        <div class="bowling-title"><i class="fa-solid fa-bowling-ball"></i> Bowling Minigame</div>
+        <div class="bowling-stats">
+          <div class="bowling-stat">
+            <span class="stat-label">Throws</span>
+            <span class="stat-val" id="stat-throws">0</span>
+          </div>
+          <div class="bowling-stat">
+            <span class="stat-label">Score</span>
+            <span class="stat-val" id="stat-score">0</span>
+          </div>
+        </div>
+        <div class="bowling-instructions">
+          Walk up to the red voxel ball to kick it! Knock down blocky pins!
+        </div>
+        <button class="btn-bowling-reset" id="btn-bowling-reset"><i class="fa-solid fa-rotate-left"></i> Reset Game</button>
+      </div>
+      
+      <!-- Giant Neon Strike Notification -->
+      <div class="strike-overlay" id="strike-overlay">STRIKE!</div>
+      
+      <!-- Opening/Loading Animation Splash Screen -->
+      <div class="game-loader" id="game-loader">
+        <div class="loader-logo"><i class="fa-solid fa-cubes"></i></div>
+        <div class="loader-bar">
+          <div class="loader-fill"></div>
+        </div>
+        <div class="loader-text">Loading Voxel career museum...</div>
+      </div>
+    </div>
+  </dialog>
+
+  <script src="game3d.js?v=15"></script>
+  <script src="script.js?v=15"></script>
 </body>
 </html>

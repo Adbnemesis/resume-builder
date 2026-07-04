@@ -1,0 +1,181 @@
+<!DOCTYPE html>
+<html>
+<head>
+<title>Dialog 3D Test</title>
+<script src="https://cdnjs.cloudflare.com/ajax/libs/three.js/r128/three.min.js"></script>
+<style>
+body { margin: 0; font-family: sans-serif; background: #222; color: #fff; padding: 20px; }
+dialog { width: 100vw; height: 100vh; max-width: 100vw; max-height: 100vh; border: none; background: #09090b; padding: 0; margin: 0; overflow: hidden; box-sizing: border-box; }
+dialog::backdrop { background: rgba(0,0,0,0.85); }
+.game-container { position: relative; width: 100%; height: 100%; overflow: hidden; }
+canvas { width: 100%; height: 100%; display: block; }
+.close-btn { position: absolute; top: 20px; right: 20px; z-index: 1000; background: rgba(255,0,0,0.7); color: white; border: none; padding: 10px 20px; cursor: pointer; font-size: 16px; border-radius: 8px; }
+#info { position: absolute; top: 20px; left: 20px; z-index: 1000; background: rgba(0,0,0,0.8); color: #0f0; font-family: monospace; font-size: 12px; padding: 10px; max-height: 300px; overflow-y: auto; }
+button.start { font-size: 24px; padding: 20px 40px; cursor: pointer; }
+</style>
+</head>
+<body>
+<h1>Dialog 3D Test</h1>
+<button class="start" onclick="startGame()">Open 3D Game in Dialog</button>
+
+<dialog id="game-dialog">
+  <div class="game-container" id="game-container">
+    <canvas id="game-canvas"></canvas>
+    <button class="close-btn" onclick="closeGame()">✕ Close</button>
+    <div id="info"></div>
+  </div>
+</dialog>
+
+<script>
+let scene, camera, renderer;
+let isActive = false;
+
+const info = document.getElementById('info');
+const log = (msg) => { info.innerHTML += msg + '<br>'; console.log('[Dialog3D]', msg); };
+
+function startGame() {
+  const dialog = document.getElementById('game-dialog');
+  dialog.showModal();
+  isActive = true;
+  log('Dialog opened');
+
+  setTimeout(() => {
+    try {
+      const container = document.getElementById('game-container');
+      const canvas = document.getElementById('game-canvas');
+
+      const w = container.clientWidth || window.innerWidth;
+      const h = container.clientHeight || window.innerHeight;
+      log('Container: ' + container.clientWidth + 'x' + container.clientHeight);
+      log('Fallback: ' + w + 'x' + h);
+
+      // Scene
+      scene = new THREE.Scene();
+      scene.background = new THREE.Color(0x0a0b16);
+      scene.fog = new THREE.FogExp2(0x0a0b16, 0.03);
+
+      // Camera
+      camera = new THREE.PerspectiveCamera(65, w / h, 0.1, 100);
+      camera.position.set(0, 1.6, 8);
+
+      // Renderer
+      renderer = new THREE.WebGLRenderer({ canvas: canvas, antialias: true });
+      renderer.setSize(w, h);
+      renderer.setPixelRatio(Math.min(window.devicePixelRatio, 2));
+      renderer.shadowMap.enabled = true;
+      log('Renderer: ' + renderer.domElement.width + 'x' + renderer.domElement.height);
+
+      // Lights
+      scene.add(new THREE.AmbientLight(0xccd0ff, 1.2));
+      const dl = new THREE.DirectionalLight(0xffffff, 1.0);
+      dl.position.set(5, 20, 5);
+      scene.add(dl);
+      scene.add(new THREE.PointLight(0x38bdf8, 2.0, 12).position.set(0, 3, 0) || new THREE.PointLight(0x38bdf8, 2.0, 12));
+
+      // Actually add point light properly
+      const pl = new THREE.PointLight(0x38bdf8, 2.0, 12);
+      pl.position.set(0, 3, 0);
+      scene.add(pl);
+
+      // Floor
+      const floorCanvas2 = document.createElement('canvas');
+      floorCanvas2.width = 256; floorCanvas2.height = 256;
+      const ctx = floorCanvas2.getContext('2d');
+      ctx.fillStyle = '#0c0d16'; ctx.fillRect(0, 0, 256, 256);
+      ctx.strokeStyle = 'rgba(99,102,241,0.35)'; ctx.lineWidth = 4; ctx.strokeRect(0, 0, 256, 256);
+      const ft = new THREE.CanvasTexture(floorCanvas2);
+      ft.wrapS = ft.wrapT = THREE.RepeatWrapping;
+      ft.repeat.set(20, 20);
+      const floor = new THREE.Mesh(new THREE.PlaneGeometry(60,60), new THREE.MeshStandardMaterial({map:ft,roughness:0.2,metalness:0.8}));
+      floor.rotation.x = -Math.PI/2;
+      scene.add(floor);
+      log('Floor added');
+
+      // Walls
+      const wm = new THREE.MeshStandardMaterial({color:0x2a2a30,roughness:0.6,metalness:0.2});
+      [
+        [0,4,-14.5,30,8,1], [0,4,14.5,30,8,1], [14.5,4,0,1,8,30],
+        [-14.5,4,-10,1,8,10], [-14.5,4,10,1,8,10]
+      ].forEach(([x,y,z,a,b,c]) => {
+        const m = new THREE.Mesh(new THREE.BoxGeometry(a,b,c), wm);
+        m.position.set(x,y,z);
+        scene.add(m);
+      });
+      log('Walls added');
+
+      // Pedestal
+      const base = new THREE.Mesh(new THREE.CylinderGeometry(1.2,1.4,0.8,16), new THREE.MeshStandardMaterial({color:0x3a3a40,roughness:0.4,metalness:0.9}));
+      base.position.y = 0.4;
+      scene.add(base);
+      log('Pedestal added');
+
+      // Crystal
+      const crystal = new THREE.Mesh(new THREE.OctahedronGeometry(0.5,0), new THREE.MeshStandardMaterial({color:0x38bdf8,emissive:0x0369a1,roughness:0.1,metalness:0.9,flatShading:true}));
+      crystal.position.y = 2.0;
+      scene.add(crystal);
+      log('Crystal added');
+
+      // Neon bar
+      const neon = new THREE.Mesh(new THREE.BoxGeometry(3.2,0.15,0.15), new THREE.MeshBasicMaterial({color:0x8b5cf6}));
+      neon.position.set(0, 3.7, -14);
+      scene.add(neon);
+      log('Neon added');
+
+      log('Children: ' + scene.children.length);
+
+      // Camera angle
+      let yaw = 0, pitch = -0.05;
+      const keys = {};
+      const pos = {x:0, y:1.6, z:8};
+
+      window.addEventListener('keydown', (e) => { keys[e.key.toLowerCase()] = true; });
+      window.addEventListener('keyup', (e) => { keys[e.key.toLowerCase()] = false; });
+
+      function animate() {
+        if (!isActive) return;
+        requestAnimationFrame(animate);
+
+        const fwd = new THREE.Vector3(0,0,-1).applyAxisAngle(new THREE.Vector3(0,1,0), yaw);
+        const rt = new THREE.Vector3(1,0,0).applyAxisAngle(new THREE.Vector3(0,1,0), yaw);
+        if (keys.w) { pos.x += fwd.x*0.12; pos.z += fwd.z*0.12; }
+        if (keys.s) { pos.x -= fwd.x*0.12; pos.z -= fwd.z*0.12; }
+        if (keys.a) { pos.x -= rt.x*0.12; pos.z -= rt.z*0.12; }
+        if (keys.d) { pos.x += rt.x*0.12; pos.z += rt.z*0.12; }
+
+        const qY = new THREE.Quaternion().setFromAxisAngle(new THREE.Vector3(0,1,0), yaw);
+        const qP = new THREE.Quaternion().setFromAxisAngle(new THREE.Vector3(1,0,0), pitch);
+        camera.quaternion.copy(qY).multiply(qP);
+        camera.position.set(pos.x, pos.y, pos.z);
+
+        crystal.rotation.y += 0.01;
+
+        renderer.render(scene, camera);
+      }
+      animate();
+      log('Loop started!');
+
+      // Force resize after layout settles
+      setTimeout(() => {
+        const nw = container.clientWidth || window.innerWidth;
+        const nh = container.clientHeight || window.innerHeight;
+        camera.aspect = nw / nh;
+        camera.updateProjectionMatrix();
+        renderer.setSize(nw, nh);
+        log('Resized: ' + nw + 'x' + nh);
+      }, 100);
+
+    } catch(err) {
+      log('ERROR: ' + err.message);
+      console.error(err);
+    }
+  }, 300);
+}
+
+function closeGame() {
+  isActive = false;
+  const dialog = document.getElementById('game-dialog');
+  dialog.close();
+}
+</script>
+</body>
+</html>
