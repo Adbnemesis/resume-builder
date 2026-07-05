@@ -134,6 +134,19 @@ const DEFAULT_DESIGN_DATA = {
 // Application States
 let resumeData = {};
 let designData = {};
+
+// Expose states to the window object dynamically via getters/setters for 3D game compatibility
+Object.defineProperty(window, "resumeData", {
+  get: () => resumeData,
+  set: (val) => { resumeData = val; },
+  configurable: true
+});
+Object.defineProperty(window, "designData", {
+  get: () => designData,
+  set: (val) => { designData = val; },
+  configurable: true
+});
+
 let zoomLevel = 1.0;
 
 // Initialize Application
