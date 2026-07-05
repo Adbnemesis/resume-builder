@@ -552,6 +552,33 @@
   background: rgba(16, 185, 129, 0.25);
 }
 
+.ats-suggestion-btn.apply-fix {
+  background: rgba(139, 92, 246, 0.2);
+  color: #c084fc;
+  border: 1px solid rgba(139, 92, 246, 0.35);
+  box-shadow: 0 0 10px rgba(139, 92, 246, 0.1);
+}
+
+.ats-suggestion-btn.apply-fix:hover {
+  background: rgba(139, 92, 246, 0.35);
+  color: #e9d5ff;
+  border-color: rgba(139, 92, 246, 0.5);
+  box-shadow: 0 0 14px rgba(139, 92, 246, 0.25);
+  transform: translateY(-1px);
+}
+
+.ats-suggestion-btn.apply-fix:active {
+  transform: scale(0.97);
+}
+
+.ats-suggestion-btn.apply-fix.applied {
+  background: rgba(16, 185, 129, 0.2) !important;
+  color: #34d399 !important;
+  border-color: rgba(16, 185, 129, 0.3) !important;
+  box-shadow: none !important;
+  pointer-events: none;
+}
+
 /* ─── Job Analysis Section ─── */
 .ats-job-input-group {
   display: flex;

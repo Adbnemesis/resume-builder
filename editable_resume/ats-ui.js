@@ -254,7 +254,7 @@
       const color = cat.score >= 80 ? '#4ade80' : cat.score >= 60 ? '#22c55e' : cat.score >= 40 ? '#fbbf24' : '#f87171';
       const hasDetails = cat.findings.length > 0 || cat.deductions.length > 0;
 
-      html += `<div class="ats-breakdown-item-wrapper${hasDetails ? '' : ''}">`;
+      html += `<div class="ats-breakdown-item-wrapper">`;
       html += `
         <div class="ats-breakdown-item" ${hasDetails ? 'data-expandable="true"' : ''}>
           <div class="ats-breakdown-icon"><i class="fa-solid ${cat.icon || 'fa-circle'}"></i></div>
@@ -424,10 +424,14 @@
   function _renderSuggestionCard(s) {
     let actionsHtml = '';
     if (s.section) {
-      actionsHtml += `<button class="ats-suggestion-btn navigate" data-section="${s.section}" data-item="${s.itemIndex || ''}"><i class="fa-solid fa-arrow-right"></i> Show in Editor</button>`;
+      actionsHtml += `<button class="ats-suggestion-btn navigate" data-section="${s.section}" data-item="${s.itemIndex !== undefined ? s.itemIndex : ''}"><i class="fa-solid fa-arrow-right"></i> Show in Editor</button>`;
     }
     if (s.type === 'keyword' && s.skills && s.skills.length > 0) {
       actionsHtml += `<button class="ats-suggestion-btn apply-skill" data-skills="${_escHtml(s.skills.join(','))}"><i class="fa-solid fa-plus"></i> Add Skills</button>`;
+    }
+    if (s.fixAction) {
+      const actionData = encodeURIComponent(JSON.stringify(s.fixAction));
+      actionsHtml += `<button class="ats-suggestion-btn apply-fix" data-action="${actionData}"><i class="fa-solid fa-wand-magic-sparkles"></i> Auto-Apply Fix</button>`;
     }
 
     return `
@@ -453,7 +457,6 @@
     const container = document.getElementById('atsJobInputSection');
     if (!container) return;
 
-    // Only re-render if empty (preserve user input)
     if (container.querySelector('.ats-job-input-group')) return;
 
     container.innerHTML = `
@@ -488,7 +491,6 @@
       </div>
     `;
 
-    // Bind job analysis buttons
     const analyzeBtn = document.getElementById('atsJobAnalyzeBtn');
     const fetchBtn = document.getElementById('atsJobFetchBtn');
     const clearBtn = document.getElementById('atsJobClearBtn');
@@ -520,7 +522,6 @@
 
         try {
           _currentJobData = await window.ATSJobParser.fetchAndParse(url);
-          // Pre-fill textarea with the detected text for user verification
           if (_currentJobData.rawText) {
             textArea.value = _currentJobData.rawText.substring(0, 3000);
           }
@@ -549,7 +550,6 @@
   }
 
   function _showStatus(message) {
-    // Use a temporary toast
     const existing = document.querySelector('.ats-toast');
     if (existing) existing.remove();
 
@@ -598,7 +598,6 @@
 
     let html = '';
 
-    // Job title
     if (result.jobTitle) {
       html += `<div style="text-align:center;margin-bottom:8px">
         <div style="font-size:0.82rem;font-weight:600;color:#e2e8f0">${_escHtml(result.jobTitle)}</div>
@@ -606,13 +605,11 @@
       </div>`;
     }
 
-    // Recommendation banner
     html += `<div class="ats-recommendation-banner ${result.recommendationLevel}">
       <i class="fa-solid ${iconFor(result.recommendationLevel)}"></i>
       <span>${_escHtml(result.recommendation)}</span>
     </div>`;
 
-    // Match grid
     html += `<div class="ats-match-grid">
       <div class="ats-match-card">
         <div class="ats-match-percent" style="color:${colorFor(result.atsScore)}">${result.atsScore}</div>
@@ -648,7 +645,6 @@
       </div>
     </div>`;
 
-    // Missing items sections
     if (result.missingSkills.length > 0) {
       html += _renderTagSection('Missing Skills', result.missingSkills, 'fa-screwdriver-wrench');
     }
@@ -754,11 +750,9 @@
         const section = btn.dataset.section;
         if (section) {
           close(); // Close ATS panel
-          // Click the tab to navigate to the section
           const tabBtn = document.querySelector(`.tab-btn[data-tab="${section}"]`);
           if (tabBtn) {
             tabBtn.click();
-            // Flash effect
             const panel = document.getElementById(`panel-${section}`);
             if (panel) {
               const h2 = panel.querySelector('h2, .section-title-input');
@@ -788,10 +782,8 @@
         const resumeData = window.resumeData;
         if (!resumeData) return;
 
-        // Find the first skills section
         const skillsSection = (resumeData.sections || []).find(s => s.type === 'tags');
         if (skillsSection && skillsSection.categories && skillsSection.categories.length > 0) {
-          // Add to first category
           const cat = skillsSection.categories[0];
           let added = 0;
           skills.forEach(skill => {
@@ -803,16 +795,13 @@
           });
 
           if (added > 0) {
-            // Trigger save and re-render
             if (window.saveState) window.saveState();
             if (window.renderEditor) window.renderEditor();
 
-            // Update button to show success
             btn.innerHTML = '<i class="fa-solid fa-check"></i> Added!';
             btn.style.opacity = '0.6';
             btn.style.pointerEvents = 'none';
 
-            // Refresh ATS analysis
             if (window.ATSEngine) window.ATSEngine.invalidateCache();
             if (window.ATSRecommendations) window.ATSRecommendations.invalidateCache();
             setTimeout(() => refresh(), 200);
@@ -820,6 +809,178 @@
         }
       });
     });
+
+    // Apply Auto-Fix Action
+    container.querySelectorAll('.ats-suggestion-btn.apply-fix').forEach(btn => {
+      btn.addEventListener('click', (e) => {
+        e.stopPropagation();
+        const actionStr = decodeURIComponent(btn.dataset.action);
+        try {
+          const action = JSON.parse(actionStr);
+          _applyFix(action, btn);
+        } catch (err) {
+          console.error("Failed to parse fix action:", err);
+        }
+      });
+    });
+  }
+
+  function _applyFix(action, btn) {
+    const resumeData = window.resumeData;
+    if (!resumeData) return;
+
+    let success = false;
+
+    if (action.type === 'replaceHighlight') {
+      const sec = resumeData.sections.find(s => s.id === action.sectionId);
+      if (sec && sec.items && sec.items[action.itemIndex] && sec.items[action.itemIndex].highlights) {
+        sec.items[action.itemIndex].highlights[action.highlightIndex] = action.newValue;
+        success = true;
+      }
+    } else if (action.type === 'replacePersonalField') {
+      let current = resumeData;
+      const path = action.path || [];
+      for (let i = 0; i < path.length - 1; i++) {
+        current = current[path[i]];
+      }
+      if (current) {
+        current[path[path.length - 1]] = action.newValue;
+        success = true;
+      }
+    } else if (action.type === 'addSkill') {
+      const skillsSection = (resumeData.sections || []).find(s => s.type === 'tags');
+      if (skillsSection && skillsSection.categories && skillsSection.categories.length > 0) {
+        let cat = skillsSection.categories.find(c => {
+          const lbl = (c.label || '').toLowerCase();
+          return action.categoryName && lbl.includes(action.categoryName.toLowerCase());
+        }) || skillsSection.categories[0];
+        
+        if (cat && !cat.tags.includes(action.newValue)) {
+          cat.tags.push(action.newValue);
+          success = true;
+        }
+      }
+    } else if (action.type === 'addSkillsBatch') {
+      const skillsSection = (resumeData.sections || []).find(s => s.type === 'tags');
+      if (skillsSection && skillsSection.categories && skillsSection.categories.length > 0) {
+        const cat = skillsSection.categories[0];
+        let added = 0;
+        action.skills.forEach(skill => {
+          if (!cat.tags.includes(skill)) {
+            cat.tags.push(skill);
+            added++;
+          }
+        });
+        if (added > 0) success = true;
+      }
+    } else if (action.type === 'addHighlight') {
+      const sec = resumeData.sections.find(s => s.id === action.sectionId);
+      if (sec && sec.items && sec.items[action.itemIndex]) {
+        if (!sec.items[action.itemIndex].highlights) {
+          sec.items[action.itemIndex].highlights = [];
+        }
+        sec.items[action.itemIndex].highlights.push(action.newValue);
+        success = true;
+      }
+    } else if (action.type === 'replaceItemField') {
+      const sec = resumeData.sections.find(s => s.id === action.sectionId);
+      if (sec && sec.items && sec.items[action.itemIndex]) {
+        sec.items[action.itemIndex][action.field] = action.newValue;
+        success = true;
+      }
+    } else if (action.type === 'replaceSummaryText') {
+      const sec = resumeData.sections.find(s => s.id === action.sectionId);
+      if (sec && sec.items && sec.items[0]) {
+        if (sec.items[0].description !== undefined) {
+          sec.items[0].description = action.newValue;
+          success = true;
+        } else if (sec.items[0].title !== undefined) {
+          sec.items[0].title = action.newValue;
+          success = true;
+        }
+      }
+    } else if (action.type === 'fixAllPunctuation') {
+      let count = 0;
+      (resumeData.sections || []).forEach(sec => {
+        if (sec.type === 'list' && sec.items) {
+          sec.items.forEach(item => {
+            if (item.highlights) {
+              item.highlights = item.highlights.map(hl => {
+                const trimmed = hl.trim();
+                if (action.mode === 'add' && !trimmed.endsWith('.')) {
+                  count++;
+                  return trimmed + '.';
+                } else if (action.mode === 'remove' && trimmed.endsWith('.')) {
+                  count++;
+                  return trimmed.substring(0, trimmed.length - 1);
+                }
+                return hl;
+              });
+            }
+          });
+        }
+      });
+      if (count > 0) success = true;
+    } else if (action.type === 'removeDuplicates') {
+      let count = 0;
+      (resumeData.sections || []).forEach(sec => {
+        if (sec.type === 'list' && sec.items) {
+          sec.items.forEach(item => {
+            if (item.highlights) {
+              const seen = new Set();
+              const unique = [];
+              item.highlights.forEach(hl => {
+                const norm = hl.toLowerCase().trim();
+                if (!seen.has(norm)) {
+                  seen.add(norm);
+                  unique.push(hl);
+                } else {
+                  count++;
+                }
+              });
+              item.highlights = unique;
+            }
+          });
+        }
+      });
+      if (count > 0) success = true;
+    } else if (action.type === 'promptForMetric') {
+      const metric = prompt(`Quantify this achievement:\n"${action.text}"\n\nEnter a metric (e.g. "by 35%", "saving $10K", "boosting speed by 40%"):`);
+      if (metric && metric.trim()) {
+        const cleanMetric = metric.trim();
+        const sec = resumeData.sections.find(s => s.id === action.sectionId);
+        if (sec && sec.items && sec.items[action.itemIndex] && sec.items[action.itemIndex].highlights) {
+          const bullet = sec.items[action.itemIndex].highlights[action.highlightIndex];
+          const hasPeriod = bullet.endsWith('.');
+          const base = hasPeriod ? bullet.substring(0, bullet.length - 1) : bullet;
+          sec.items[action.itemIndex].highlights[action.highlightIndex] = `${base} ${cleanMetric}${hasPeriod ? '.' : ''}`;
+          success = true;
+        }
+      }
+    }
+
+    if (success) {
+      if (window.saveState) window.saveState();
+      if (window.renderEditor) window.renderEditor();
+      if (window.renderPreview) window.renderPreview();
+
+      btn.innerHTML = '<i class="fa-solid fa-circle-check"></i> Applied!';
+      btn.style.background = 'rgba(16, 185, 129, 0.2)';
+      btn.style.color = '#34d399';
+      btn.style.pointerEvents = 'none';
+
+      if (window.ATSEngine) window.ATSEngine.invalidateCache();
+      if (window.ATSRecommendations) window.ATSRecommendations.invalidateCache();
+      
+      setTimeout(() => {
+        refresh();
+      }, 600);
+    } else {
+      if (action.type === 'promptForMetric') {
+        return;
+      }
+      btn.innerHTML = '<i class="fa-solid fa-triangle-exclamation"></i> Error';
+    }
   }
 
   // ═══════════════════════════════════════════════════════════════════════════
@@ -841,5 +1002,7 @@
     close,
     refresh
   };
+
+  window.ATSUI._applyFix = _applyFix;
 
 })();

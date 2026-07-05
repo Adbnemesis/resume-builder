@@ -411,6 +411,35 @@
   // JOB-SPECIFIC OPTIMIZATION SUGGESTIONS
   // ═══════════════════════════════════════════════════════════════════════════
 
+  // Helper to tailor professional summaries for a target job role
+  function _tailorSummaryText(summaryText, jobTitle, skills) {
+    if (!summaryText) return '';
+    let tailored = summaryText.trim();
+    const titles = ['software engineer', 'software developer', 'frontend developer', 'frontend engineer', 'backend developer', 'backend engineer', 'data scientist', 'product manager', 'full stack developer', 'full stack engineer'];
+    
+    let titleReplaced = false;
+    if (jobTitle) {
+      for (const t of titles) {
+        const regex = new RegExp(`\\b${t}\\b`, 'i');
+        if (regex.test(tailored)) {
+          tailored = tailored.replace(regex, jobTitle);
+          titleReplaced = true;
+          break;
+        }
+      }
+      if (!titleReplaced) {
+        tailored = `${jobTitle} with experience in ` + tailored.charAt(0).toLowerCase() + tailored.slice(1);
+      }
+    }
+
+    if (skills && skills.length > 0) {
+      const skillsStr = skills.join(', ');
+      tailored = tailored.replace(/[.!?]+$/, '') + `, bringing hands-on expertise in ${skillsStr}.`;
+    }
+
+    return tailored;
+  }
+
   function getOptimizations(resumeData, parsedJob) {
     if (!resumeData || !parsedJob) return [];
 
@@ -431,7 +460,11 @@
         section: 'skills',
         estimatedGain: Math.min(10, topMissingSkills.length * 2),
         type: 'keyword',
-        skills: topMissingSkills
+        skills: topMissingSkills,
+        fixAction: {
+          type: 'addSkillsBatch',
+          skills: topMissingSkills
+        }
       });
     }
 
@@ -460,10 +493,14 @@
         priority: 'high',
         issue: `${missingTech.length} technology/technologies from the job posting not in your resume`,
         impact: 'Technology keyword matches are weighted heavily in ATS scoring for technical roles.',
-        fix: `If you have experience with: ${missingTech.join(', ')} — add them to your Skills section and mention them in relevant project/experience bullets.`,
+        fix: `If you have experience with: ${missingTech.join(', ')} — add them to your Skills section.`,
         section: 'skills',
         estimatedGain: Math.min(8, missingTech.length * 2),
-        type: 'keyword'
+        type: 'keyword',
+        fixAction: {
+          type: 'addSkillsBatch',
+          skills: missingTech
+        }
       });
     }
 
@@ -504,7 +541,6 @@
       const allMissing = [...topMissingSkills, ...topMissingKeywords];
 
       if (highlights.length > 0 && allMissing.length > 0) {
-        // Find bullets that could naturally incorporate missing keywords
         const weakBullets = highlights.filter(h => {
           const hasMetrics = E.countNumbers(h) > 0;
           const firstWord = E.getFirstWord(h);
@@ -529,12 +565,12 @@
     }
 
     // 7. Professional summary tailoring
-    const hasSummary = (resumeData.sections || []).some(s => {
+    const summarySec = (resumeData.sections || []).find(s => {
       const lower = (s.name || '').toLowerCase();
       return ['summary', 'objective', 'about', 'profile'].some(p => lower.includes(p));
     });
 
-    if (!hasSummary) {
+    if (!summarySec) {
       suggestions.push({
         id: 'job-add-summary',
         category: 'Professional Summary',
@@ -547,17 +583,32 @@
         type: 'structure'
       });
     } else {
-      suggestions.push({
-        id: 'job-tailor-summary',
-        category: 'Professional Summary',
-        priority: 'medium',
-        issue: 'Summary may not be tailored for this specific position',
-        impact: 'A tailored summary that mirrors the job description language scores significantly higher.',
-        fix: `Update your summary to reference "${parsedJob.title || 'this role'}" and include key terms: ${topMissingSkills.slice(0, 3).join(', ') || 'relevant job keywords'}.`,
-        section: null,
-        estimatedGain: 3,
-        type: 'content'
-      });
+      let currentSummary = '';
+      if (summarySec.type === 'list' && summarySec.items && summarySec.items[0]) {
+        currentSummary = summarySec.items[0].description || summarySec.items[0].title || '';
+      }
+      
+      if (currentSummary && currentSummary.length > 20) {
+        const tailored = _tailorSummaryText(currentSummary, parsedJob.title, topMissingSkills.slice(0, 3));
+        if (tailored && tailored !== currentSummary) {
+          suggestions.push({
+            id: 'job-tailor-summary',
+            category: 'Professional Summary',
+            priority: 'medium',
+            issue: 'Summary may not be tailored for this specific position',
+            impact: 'A tailored summary that mirrors the job description language scores significantly higher.',
+            fix: `Auto-apply summary rewrite to reference "${parsedJob.title || 'this role'}" and include key terms.`,
+            section: summarySec.id,
+            estimatedGain: 3,
+            type: 'content',
+            fixAction: {
+              type: 'replaceSummaryText',
+              sectionId: summarySec.id,
+              newValue: tailored
+            }
+          });
+        }
+      }
     }
 
     // Sort by priority and gain
