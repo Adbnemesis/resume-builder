@@ -164,6 +164,11 @@ document.addEventListener("DOMContentLoaded", async () => {
   initLayoutPanel();
   renderPreview();
   updateATSWidget();
+
+  // Initialize ATS UI panel
+  if (window.ATSUI) {
+    window.ATSUI.init();
+  }
 });
 
 // State Storage Management
@@ -1661,50 +1666,19 @@ function renderSectionOrderList() {
 
 // ATS Score: calculate content completeness percentage
 function calcATSScore() {
-  let score = 0;
-  let total = 0;
-
-  const addCheck = (val, weight = 1) => {
-    total += weight;
-    if (val) score += weight;
-  };
-
-  const p = resumeData.personal || {};
-  addCheck(p.name);
-  addCheck(p.email);
-  addCheck(p.phone);
-  addCheck(p.location);
-  addCheck(p.linkedin?.username);
-  addCheck(p.github?.username);
-
-  const sections = resumeData.sections || [];
-  sections.forEach(sec => {
-    if (sec.type === "list") {
-      addCheck(sec.items && sec.items.length > 0, 2);
-      if (sec.items && sec.items.length > 0) {
-        const hasHighlights = sec.items.some(item => item.highlights && item.highlights.length > 0);
-        addCheck(hasHighlights, 2);
-      }
-    } else if (sec.type === "tags") {
-      const tagCount = (sec.categories || []).reduce((a, c) => a + (c.tags ? c.tags.length : 0), 0);
-      addCheck(tagCount > 0, 2);
-      addCheck(tagCount >= 5, 1);
-    }
-  });
-
-  return Math.min(100, Math.round((score / total) * 100));
+  if (window.ATSEngine) {
+    return window.ATSEngine.getScore(resumeData);
+  }
+  return 0;
 }
 
 function updateATSWidget() {
-  const pct = calcATSScore();
-  const bar = document.getElementById("atsBarFill");
-  const val = document.getElementById("atsValue");
-  if (!bar || !val) return;
-  bar.style.width = `${pct}%`;
-  val.textContent = `${pct}%`;
-  const color = pct >= 80 ? "#0d9488" : pct >= 50 ? "#d97706" : "#dc2626";
-  bar.style.background = color;
-  val.style.color = color;
+  if (window.ATSEngine) {
+    window.ATSEngine.updateWidget();
+  }
+  if (window.ATSUI) {
+    window.ATSUI.refresh();
+  }
 }
 
 /* ==========================================================================

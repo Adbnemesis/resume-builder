@@ -17,6 +17,7 @@
   <link rel="stylesheet" href="style.css?v=15">
   <link rel="stylesheet" href="resume.css?v=15">
   <link rel="stylesheet" href="game3d.css?v=15">
+  <link rel="stylesheet" href="ats-panel.css?v=15">
   
   <!-- PDF.js library for client-side PDF text extraction -->
   <script src="https://cdnjs.cloudflare.com/ajax/libs/pdf.js/3.4.120/pdf.min.js"></script>
@@ -291,6 +292,9 @@
 
   </div>
 
+  <!-- ATS Analysis Slide-Out Panel -->
+  <aside id="atsPanel" aria-label="ATS Resume Analyzer"></aside>
+
   <!-- Custom Dialogue Modals -->
   <div id="customDialogContainer" class="dialog-backdrop" style="display: none;">
     <div class="custom-dialog">
@@ -449,6 +453,14 @@
   </dialog>
 
   <script src="game3d.js?v=15"></script>
+
+  <!-- ATS Engine Modules (loaded before script.js) -->
+  <script src="ats-engine.js?v=15"></script>
+  <script src="ats-recommendations.js?v=15"></script>
+  <script src="ats-job-parser.js?v=15"></script>
+  <script src="ats-job-matcher.js?v=15"></script>
+  <script src="ats-ui.js?v=15"></script>
+
   <script src="script.js?v=15"></script>
 </body>
 </html>

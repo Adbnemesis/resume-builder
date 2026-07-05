@@ -1,0 +1,927 @@
+/* ============================================================================
+   ATS ANALYSIS PANEL — ats-panel.css
+   ============================================================================
+   Glassmorphism slide-out panel for ATS analysis, scoring breakdown,
+   recommendations, and job matching. Dark theme matching the editor sidebar.
+   ============================================================================ */
+
+/* ─── Panel Container ─── */
+#atsPanel {
+  position: fixed;
+  top: 0;
+  right: 0;
+  width: 420px;
+  max-width: 90vw;
+  height: 100vh;
+  background: linear-gradient(145deg, rgba(15, 23, 42, 0.97) 0%, rgba(30, 41, 59, 0.97) 100%);
+  backdrop-filter: blur(20px) saturate(1.8);
+  -webkit-backdrop-filter: blur(20px) saturate(1.8);
+  border-left: 1px solid rgba(255, 255, 255, 0.08);
+  box-shadow: -10px 0 40px rgba(0, 0, 0, 0.5), -2px 0 8px rgba(0, 0, 0, 0.2);
+  z-index: 100;
+  transform: translateX(100%);
+  transition: transform 0.4s cubic-bezier(0.16, 1, 0.3, 1);
+  overflow-y: auto;
+  overflow-x: hidden;
+  font-family: var(--font-ui);
+  color: #e2e8f0;
+  scrollbar-width: thin;
+  scrollbar-color: rgba(255,255,255,0.15) transparent;
+}
+
+#atsPanel.open {
+  transform: translateX(0);
+}
+
+#atsPanel::-webkit-scrollbar {
+  width: 5px;
+}
+#atsPanel::-webkit-scrollbar-track {
+  background: transparent;
+}
+#atsPanel::-webkit-scrollbar-thumb {
+  background: rgba(255,255,255,0.15);
+  border-radius: 4px;
+}
+
+/* ─── Panel Header ─── */
+.ats-panel-header {
+  position: sticky;
+  top: 0;
+  z-index: 10;
+  background: linear-gradient(145deg, rgba(15, 23, 42, 0.98) 0%, rgba(30, 41, 59, 0.98) 100%);
+  backdrop-filter: blur(10px);
+  padding: 20px 24px 16px;
+  border-bottom: 1px solid rgba(255,255,255,0.08);
+  display: flex;
+  justify-content: space-between;
+  align-items: center;
+}
+
+.ats-panel-header h2 {
+  font-size: 1.1rem;
+  font-weight: 700;
+  display: flex;
+  align-items: center;
+  gap: 10px;
+  margin: 0;
+}
+
+.ats-panel-header h2 i {
+  color: #8b5cf6;
+  font-size: 1.2rem;
+}
+
+.ats-panel-close {
+  background: rgba(255,255,255,0.06);
+  border: 1px solid rgba(255,255,255,0.1);
+  border-radius: 8px;
+  color: #94a3b8;
+  width: 32px;
+  height: 32px;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  cursor: pointer;
+  transition: all 0.2s ease;
+  font-size: 1rem;
+}
+
+.ats-panel-close:hover {
+  background: rgba(255,255,255,0.12);
+  color: #f1f5f9;
+  transform: rotate(90deg);
+}
+
+/* ─── Panel Body ─── */
+.ats-panel-body {
+  padding: 20px 24px 40px;
+  display: flex;
+  flex-direction: column;
+  gap: 24px;
+}
+
+/* ─── Score Ring ─── */
+.ats-score-ring-container {
+  display: flex;
+  flex-direction: column;
+  align-items: center;
+  gap: 12px;
+  padding: 20px 0;
+}
+
+.ats-score-ring {
+  position: relative;
+  width: 140px;
+  height: 140px;
+}
+
+.ats-score-ring svg {
+  width: 100%;
+  height: 100%;
+  transform: rotate(-90deg);
+}
+
+.ats-score-ring .ring-bg {
+  fill: none;
+  stroke: rgba(255,255,255,0.06);
+  stroke-width: 8;
+}
+
+.ats-score-ring .ring-fill {
+  fill: none;
+  stroke-width: 8;
+  stroke-linecap: round;
+  transition: stroke-dashoffset 1s cubic-bezier(0.4, 0, 0.2, 1), stroke 0.4s ease;
+}
+
+.ats-score-number {
+  position: absolute;
+  top: 50%;
+  left: 50%;
+  transform: translate(-50%, -50%);
+  font-size: 2.2rem;
+  font-weight: 800;
+  letter-spacing: -1px;
+}
+
+.ats-score-label {
+  font-size: 0.75rem;
+  font-weight: 600;
+  text-transform: uppercase;
+  letter-spacing: 0.1em;
+  color: #94a3b8;
+}
+
+.ats-confidence-badge {
+  display: inline-flex;
+  align-items: center;
+  gap: 6px;
+  padding: 4px 12px;
+  border-radius: 20px;
+  font-size: 0.72rem;
+  font-weight: 600;
+  text-transform: uppercase;
+  letter-spacing: 0.06em;
+}
+
+.ats-confidence-badge.high {
+  background: rgba(16, 185, 129, 0.15);
+  color: #34d399;
+  border: 1px solid rgba(16, 185, 129, 0.3);
+}
+
+.ats-confidence-badge.medium {
+  background: rgba(234, 179, 8, 0.15);
+  color: #fbbf24;
+  border: 1px solid rgba(234, 179, 8, 0.3);
+}
+
+.ats-confidence-badge.low {
+  background: rgba(239, 68, 68, 0.15);
+  color: #f87171;
+  border: 1px solid rgba(239, 68, 68, 0.3);
+}
+
+/* ─── Section Card ─── */
+.ats-section {
+  background: rgba(255,255,255,0.03);
+  border: 1px solid rgba(255,255,255,0.06);
+  border-radius: 12px;
+  overflow: hidden;
+}
+
+.ats-section-header {
+  padding: 14px 16px;
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  cursor: pointer;
+  user-select: none;
+  transition: background 0.2s ease;
+}
+
+.ats-section-header:hover {
+  background: rgba(255,255,255,0.04);
+}
+
+.ats-section-header h3 {
+  font-size: 0.88rem;
+  font-weight: 600;
+  display: flex;
+  align-items: center;
+  gap: 8px;
+  margin: 0;
+}
+
+.ats-section-header h3 i {
+  color: #8b5cf6;
+  font-size: 0.85rem;
+  width: 18px;
+  text-align: center;
+}
+
+.ats-section-header .section-count {
+  font-size: 0.72rem;
+  background: rgba(139, 92, 246, 0.15);
+  color: #a78bfa;
+  padding: 2px 8px;
+  border-radius: 10px;
+  font-weight: 600;
+}
+
+.ats-section-chevron {
+  color: #64748b;
+  transition: transform 0.3s ease;
+  font-size: 0.8rem;
+}
+
+.ats-section.open .ats-section-chevron {
+  transform: rotate(180deg);
+}
+
+.ats-section-content {
+  max-height: 0;
+  overflow: hidden;
+  transition: max-height 0.4s cubic-bezier(0.4, 0, 0.2, 1);
+}
+
+.ats-section.open .ats-section-content {
+  max-height: 3000px;
+}
+
+.ats-section-inner {
+  padding: 0 16px 16px;
+}
+
+/* ─── Score Breakdown Items ─── */
+.ats-breakdown-item {
+  display: flex;
+  align-items: center;
+  gap: 10px;
+  padding: 8px 0;
+  border-bottom: 1px solid rgba(255,255,255,0.04);
+}
+
+.ats-breakdown-item:last-child {
+  border-bottom: none;
+}
+
+.ats-breakdown-icon {
+  width: 28px;
+  height: 28px;
+  border-radius: 6px;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  font-size: 0.7rem;
+  flex-shrink: 0;
+  background: rgba(255,255,255,0.05);
+  color: #94a3b8;
+}
+
+.ats-breakdown-info {
+  flex: 1;
+  min-width: 0;
+}
+
+.ats-breakdown-name {
+  font-size: 0.78rem;
+  font-weight: 500;
+  color: #e2e8f0;
+  white-space: nowrap;
+  overflow: hidden;
+  text-overflow: ellipsis;
+}
+
+.ats-breakdown-bar {
+  width: 100%;
+  height: 4px;
+  background: rgba(255,255,255,0.08);
+  border-radius: 2px;
+  margin-top: 4px;
+  overflow: hidden;
+}
+
+.ats-breakdown-bar-fill {
+  height: 100%;
+  border-radius: 2px;
+  transition: width 0.8s cubic-bezier(0.4, 0, 0.2, 1);
+}
+
+.ats-breakdown-score {
+  font-size: 0.75rem;
+  font-weight: 700;
+  min-width: 32px;
+  text-align: right;
+}
+
+/* ─── Expandable Breakdown Detail ─── */
+.ats-breakdown-item-wrapper {
+  border-bottom: 1px solid rgba(255,255,255,0.04);
+}
+
+.ats-breakdown-item-wrapper:last-child {
+  border-bottom: none;
+}
+
+.ats-breakdown-detail {
+  max-height: 0;
+  overflow: hidden;
+  transition: max-height 0.3s ease;
+}
+
+.ats-breakdown-item-wrapper.expanded .ats-breakdown-detail {
+  max-height: 500px;
+}
+
+.ats-breakdown-item-wrapper .ats-breakdown-item {
+  border-bottom: none;
+  cursor: pointer;
+}
+
+.ats-breakdown-item-wrapper .ats-breakdown-item:hover {
+  background: rgba(255,255,255,0.02);
+  border-radius: 6px;
+}
+
+.ats-detail-list {
+  padding: 0 0 8px 38px;
+  display: flex;
+  flex-direction: column;
+  gap: 4px;
+}
+
+.ats-detail-finding {
+  font-size: 0.72rem;
+  color: #4ade80;
+  display: flex;
+  align-items: flex-start;
+  gap: 6px;
+  line-height: 1.4;
+}
+
+.ats-detail-finding i {
+  margin-top: 2px;
+  flex-shrink: 0;
+  font-size: 0.65rem;
+}
+
+.ats-detail-deduction {
+  font-size: 0.72rem;
+  color: #fb923c;
+  display: flex;
+  align-items: flex-start;
+  gap: 6px;
+  line-height: 1.4;
+}
+
+.ats-detail-deduction i {
+  margin-top: 2px;
+  flex-shrink: 0;
+  font-size: 0.65rem;
+}
+
+/* ─── Strengths / Weaknesses Lists ─── */
+.ats-list-item {
+  display: flex;
+  align-items: flex-start;
+  gap: 8px;
+  padding: 6px 0;
+  font-size: 0.78rem;
+  line-height: 1.45;
+}
+
+.ats-list-item i {
+  margin-top: 3px;
+  flex-shrink: 0;
+  font-size: 0.7rem;
+}
+
+.ats-list-item.strength i { color: #4ade80; }
+.ats-list-item.weakness i { color: #f87171; }
+
+.ats-list-item .ats-list-category {
+  font-size: 0.65rem;
+  font-weight: 600;
+  color: #64748b;
+  text-transform: uppercase;
+  letter-spacing: 0.04em;
+}
+
+/* ─── Suggestion Cards ─── */
+.ats-suggestion-card {
+  background: rgba(255,255,255,0.03);
+  border: 1px solid rgba(255,255,255,0.06);
+  border-radius: 10px;
+  padding: 14px;
+  margin-bottom: 10px;
+  transition: border-color 0.2s ease;
+}
+
+.ats-suggestion-card:hover {
+  border-color: rgba(139, 92, 246, 0.3);
+}
+
+.ats-suggestion-card:last-child {
+  margin-bottom: 0;
+}
+
+.ats-suggestion-header {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  margin-bottom: 8px;
+  gap: 8px;
+}
+
+.ats-suggestion-priority {
+  font-size: 0.65rem;
+  font-weight: 700;
+  text-transform: uppercase;
+  letter-spacing: 0.06em;
+  padding: 2px 8px;
+  border-radius: 4px;
+  flex-shrink: 0;
+}
+
+.ats-suggestion-priority.high {
+  background: rgba(239, 68, 68, 0.15);
+  color: #f87171;
+  border: 1px solid rgba(239, 68, 68, 0.25);
+}
+
+.ats-suggestion-priority.medium {
+  background: rgba(234, 179, 8, 0.15);
+  color: #fbbf24;
+  border: 1px solid rgba(234, 179, 8, 0.25);
+}
+
+.ats-suggestion-priority.low {
+  background: rgba(59, 130, 246, 0.15);
+  color: #60a5fa;
+  border: 1px solid rgba(59, 130, 246, 0.25);
+}
+
+.ats-suggestion-gain {
+  font-size: 0.68rem;
+  font-weight: 600;
+  color: #4ade80;
+  display: flex;
+  align-items: center;
+  gap: 4px;
+  flex-shrink: 0;
+}
+
+.ats-suggestion-category {
+  font-size: 0.68rem;
+  color: #64748b;
+  font-weight: 500;
+}
+
+.ats-suggestion-issue {
+  font-size: 0.82rem;
+  font-weight: 600;
+  color: #f1f5f9;
+  margin-bottom: 6px;
+  line-height: 1.3;
+}
+
+.ats-suggestion-impact {
+  font-size: 0.73rem;
+  color: #94a3b8;
+  margin-bottom: 8px;
+  line-height: 1.4;
+}
+
+.ats-suggestion-fix {
+  font-size: 0.75rem;
+  color: #a5f3fc;
+  background: rgba(34, 211, 238, 0.06);
+  border: 1px solid rgba(34, 211, 238, 0.12);
+  border-radius: 6px;
+  padding: 8px 10px;
+  line-height: 1.4;
+  display: flex;
+  align-items: flex-start;
+  gap: 6px;
+}
+
+.ats-suggestion-fix i {
+  color: #22d3ee;
+  margin-top: 2px;
+  flex-shrink: 0;
+}
+
+.ats-suggestion-actions {
+  display: flex;
+  gap: 8px;
+  margin-top: 10px;
+}
+
+.ats-suggestion-btn {
+  font-size: 0.7rem;
+  font-weight: 600;
+  padding: 5px 12px;
+  border-radius: 6px;
+  border: none;
+  cursor: pointer;
+  display: flex;
+  align-items: center;
+  gap: 5px;
+  transition: all 0.2s ease;
+}
+
+.ats-suggestion-btn.navigate {
+  background: rgba(139, 92, 246, 0.15);
+  color: #a78bfa;
+  border: 1px solid rgba(139, 92, 246, 0.25);
+}
+
+.ats-suggestion-btn.navigate:hover {
+  background: rgba(139, 92, 246, 0.25);
+}
+
+.ats-suggestion-btn.apply-skill {
+  background: rgba(16, 185, 129, 0.15);
+  color: #34d399;
+  border: 1px solid rgba(16, 185, 129, 0.25);
+}
+
+.ats-suggestion-btn.apply-skill:hover {
+  background: rgba(16, 185, 129, 0.25);
+}
+
+/* ─── Job Analysis Section ─── */
+.ats-job-input-group {
+  display: flex;
+  flex-direction: column;
+  gap: 10px;
+}
+
+.ats-job-textarea {
+  width: 100%;
+  min-height: 100px;
+  max-height: 200px;
+  resize: vertical;
+  background: rgba(15, 23, 42, 0.6);
+  border: 1px solid rgba(255,255,255,0.1);
+  border-radius: 8px;
+  padding: 10px 12px;
+  font-family: var(--font-ui);
+  font-size: 0.8rem;
+  color: #e2e8f0;
+  line-height: 1.5;
+  outline: none;
+  transition: border-color 0.2s ease;
+  box-sizing: border-box;
+}
+
+.ats-job-textarea:focus {
+  border-color: rgba(139, 92, 246, 0.5);
+  box-shadow: 0 0 0 3px rgba(139, 92, 246, 0.1);
+}
+
+.ats-job-textarea::placeholder {
+  color: #475569;
+}
+
+.ats-job-url-row {
+  display: flex;
+  gap: 8px;
+}
+
+.ats-job-url-input {
+  flex: 1;
+  background: rgba(15, 23, 42, 0.6);
+  border: 1px solid rgba(255,255,255,0.1);
+  border-radius: 8px;
+  padding: 8px 12px;
+  font-family: var(--font-ui);
+  font-size: 0.8rem;
+  color: #e2e8f0;
+  outline: none;
+  transition: border-color 0.2s ease;
+  box-sizing: border-box;
+}
+
+.ats-job-url-input:focus {
+  border-color: rgba(139, 92, 246, 0.5);
+}
+
+.ats-job-url-input::placeholder {
+  color: #475569;
+}
+
+.ats-job-btn {
+  padding: 8px 16px;
+  border-radius: 8px;
+  border: none;
+  font-size: 0.78rem;
+  font-weight: 600;
+  cursor: pointer;
+  display: flex;
+  align-items: center;
+  gap: 6px;
+  transition: all 0.2s ease;
+  white-space: nowrap;
+}
+
+.ats-job-btn.primary {
+  background: linear-gradient(135deg, #8b5cf6 0%, #6366f1 100%);
+  color: white;
+  box-shadow: 0 2px 8px rgba(139, 92, 246, 0.3);
+}
+
+.ats-job-btn.primary:hover {
+  box-shadow: 0 4px 14px rgba(139, 92, 246, 0.4);
+  transform: translateY(-1px);
+}
+
+.ats-job-btn.primary:disabled {
+  opacity: 0.5;
+  cursor: not-allowed;
+  transform: none;
+}
+
+.ats-job-btn.secondary {
+  background: rgba(255,255,255,0.06);
+  color: #94a3b8;
+  border: 1px solid rgba(255,255,255,0.1);
+}
+
+.ats-job-btn.secondary:hover {
+  background: rgba(255,255,255,0.1);
+  color: #e2e8f0;
+}
+
+.ats-job-or-divider {
+  display: flex;
+  align-items: center;
+  gap: 12px;
+  color: #475569;
+  font-size: 0.72rem;
+  font-weight: 600;
+  text-transform: uppercase;
+  letter-spacing: 0.1em;
+}
+
+.ats-job-or-divider::before,
+.ats-job-or-divider::after {
+  content: '';
+  flex: 1;
+  height: 1px;
+  background: rgba(255,255,255,0.08);
+}
+
+/* ─── Job Match Dashboard ─── */
+.ats-match-grid {
+  display: grid;
+  grid-template-columns: 1fr 1fr;
+  gap: 10px;
+}
+
+.ats-match-card {
+  background: rgba(255,255,255,0.03);
+  border: 1px solid rgba(255,255,255,0.06);
+  border-radius: 10px;
+  padding: 12px;
+  text-align: center;
+}
+
+.ats-match-card.full-width {
+  grid-column: 1 / -1;
+}
+
+.ats-match-percent {
+  font-size: 1.5rem;
+  font-weight: 800;
+  letter-spacing: -0.5px;
+}
+
+.ats-match-label {
+  font-size: 0.68rem;
+  color: #94a3b8;
+  margin-top: 2px;
+  font-weight: 500;
+}
+
+.ats-match-detail {
+  font-size: 0.72rem;
+  color: #94a3b8;
+  margin-top: 4px;
+  line-height: 1.3;
+}
+
+/* ─── Tag Clouds (Missing Skills/Keywords) ─── */
+.ats-tag-cloud {
+  display: flex;
+  flex-wrap: wrap;
+  gap: 6px;
+}
+
+.ats-tag {
+  font-size: 0.72rem;
+  font-weight: 500;
+  padding: 3px 10px;
+  border-radius: 14px;
+  background: rgba(239, 68, 68, 0.1);
+  color: #fca5a5;
+  border: 1px solid rgba(239, 68, 68, 0.2);
+}
+
+.ats-tag.matched {
+  background: rgba(16, 185, 129, 0.1);
+  color: #6ee7b7;
+  border-color: rgba(16, 185, 129, 0.2);
+}
+
+.ats-tag.tech {
+  background: rgba(59, 130, 246, 0.1);
+  color: #93c5fd;
+  border-color: rgba(59, 130, 246, 0.2);
+}
+
+/* ─── Recommendation Meter ─── */
+.ats-recommendation-banner {
+  padding: 14px;
+  border-radius: 10px;
+  font-size: 0.8rem;
+  font-weight: 500;
+  line-height: 1.4;
+  display: flex;
+  align-items: flex-start;
+  gap: 10px;
+}
+
+.ats-recommendation-banner i {
+  font-size: 1.1rem;
+  margin-top: 1px;
+  flex-shrink: 0;
+}
+
+.ats-recommendation-banner.strong {
+  background: rgba(16, 185, 129, 0.1);
+  border: 1px solid rgba(16, 185, 129, 0.25);
+  color: #6ee7b7;
+}
+
+.ats-recommendation-banner.good {
+  background: rgba(59, 130, 246, 0.1);
+  border: 1px solid rgba(59, 130, 246, 0.25);
+  color: #93c5fd;
+}
+
+.ats-recommendation-banner.moderate {
+  background: rgba(234, 179, 8, 0.1);
+  border: 1px solid rgba(234, 179, 8, 0.25);
+  color: #fde68a;
+}
+
+.ats-recommendation-banner.weak {
+  background: rgba(239, 68, 68, 0.1);
+  border: 1px solid rgba(239, 68, 68, 0.25);
+  color: #fca5a5;
+}
+
+/* ─── Loading State ─── */
+.ats-loading {
+  display: flex;
+  flex-direction: column;
+  align-items: center;
+  gap: 12px;
+  padding: 30px 0;
+  color: #94a3b8;
+}
+
+.ats-loading i {
+  font-size: 1.5rem;
+  color: #8b5cf6;
+}
+
+.ats-loading span {
+  font-size: 0.82rem;
+}
+
+/* ─── Empty State ─── */
+.ats-empty-state {
+  text-align: center;
+  padding: 20px 0;
+  color: #64748b;
+  font-size: 0.8rem;
+}
+
+.ats-empty-state i {
+  font-size: 1.5rem;
+  margin-bottom: 8px;
+  display: block;
+}
+
+/* ─── Tab Switcher inside panel ─── */
+.ats-panel-tabs {
+  display: flex;
+  background: rgba(255,255,255,0.04);
+  border-radius: 8px;
+  padding: 3px;
+  gap: 2px;
+}
+
+.ats-panel-tab {
+  flex: 1;
+  padding: 8px 12px;
+  border-radius: 6px;
+  border: none;
+  background: transparent;
+  color: #64748b;
+  font-size: 0.75rem;
+  font-weight: 600;
+  cursor: pointer;
+  transition: all 0.2s ease;
+  font-family: var(--font-ui);
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  gap: 5px;
+}
+
+.ats-panel-tab:hover {
+  color: #94a3b8;
+  background: rgba(255,255,255,0.04);
+}
+
+.ats-panel-tab.active {
+  background: rgba(139, 92, 246, 0.15);
+  color: #a78bfa;
+}
+
+.ats-tab-content {
+  display: none;
+}
+
+.ats-tab-content.active {
+  display: flex;
+  flex-direction: column;
+  gap: 16px;
+}
+
+/* ─── Separator ─── */
+.ats-separator {
+  height: 1px;
+  background: rgba(255,255,255,0.06);
+  margin: 4px 0;
+}
+
+/* ─── Score Color Utilities ─── */
+.score-excellent { color: #4ade80; }
+.score-good { color: #22c55e; }
+.score-fair { color: #fbbf24; }
+.score-poor { color: #f87171; }
+
+/* ─── Print Hide ─── */
+@media print {
+  #atsPanel {
+    display: none !important;
+  }
+}
+
+/* ─── Responsive ─── */
+@media (max-width: 768px) {
+  #atsPanel {
+    width: 100vw;
+    max-width: 100vw;
+  }
+}
+
+/* ─── ATS Widget Clickable Enhancement ─── */
+.ats-score-widget {
+  cursor: pointer !important;
+  transition: all 0.2s ease;
+}
+
+.ats-score-widget:hover {
+  background: rgba(255,255,255,0.1) !important;
+  border-color: rgba(139, 92, 246, 0.3) !important;
+}
+
+.ats-score-widget:active {
+  transform: scale(0.97);
+}
+
+/* ─── Backdrop when panel is open ─── */
+.ats-backdrop {
+  position: fixed;
+  top: 0;
+  left: 0;
+  width: 100vw;
+  height: 100vh;
+  background: rgba(0, 0, 0, 0.3);
+  z-index: 99;
+  opacity: 0;
+  pointer-events: none;
+  transition: opacity 0.3s ease;
+}
+
+.ats-backdrop.visible {
+  opacity: 1;
+  pointer-events: auto;
+}
