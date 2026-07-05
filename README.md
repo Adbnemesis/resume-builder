@@ -110,3 +110,16 @@ To prevent exposing private information (like your phone number, email address, 
 * **Priority 2**: If no session is found, it attempts to load your private data from `local_resume_data.json` (requires serving the app via localhost).
 * **Priority 3**: If it cannot fetch your private file, it loads the public placeholders.
 * **Manual Import**: You can click the **Import** button in the header at any time to upload a `.json` backup of your real resume details directly into browser memory.
+
+---
+
+## ATS Resume Analyzer
+
+We have integrated a **production-ready client-side ATS Resume Analyzer** directly into the editor and live preview. 
+
+### Features:
+1. **General ATS Score**: Calculated instantly across 16 categories using weighted metrics (Action Verbs, Quantifiable Achievements, Structure, Keywords). Click the score widget in the header to open the analysis panel.
+2. **Prioritized Recommendations**: View high, medium, and low-priority suggestions with estimated score increases. Click "Show in Editor" to navigate directly to the field or "Add Skills" to auto-apply missing tags.
+3. **Job-Specific Matching**: Paste a job description or provide a URL (fetched via CORS proxies). The analyzer compares requirements to generate match percentages (Skill, Keyword, Experience, Education) and missing items (Skills, Technologies, Keywords).
+4. **Auto-refresh**: Scoring updates in real-time as you type, with caching to maintain performance.
+
