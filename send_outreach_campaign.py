@@ -63,16 +63,44 @@ def main():
     # Filter un-emailed contacts
     unemailed = [c for c in all_contacts if c["status"].strip().lower() in ["discovered", "not sent", ""]]
     
+    # Calculate stats
+    total_recruiters = len(all_contacts)
+    emails_collected = len([c for c in all_contacts if c["email"] and "@" in c["email"]])
+    
     if not unemailed:
+        print(f"\nRecruiter Discovery Statistics:")
+        print(f"- Total recruiters found in database: {total_recruiters}")
+        print(f"- Total emails collected in database: {emails_collected}")
         print("\nNo un-emailed recruiter contacts found. All contacts are already 'Sent' or updated.")
         sys.exit(0)
         
-    # Limit to 10 emails
-    campaign_batch = unemailed[:10]
-    print(f"\nFound {len(unemailed)} un-emailed contacts. Starting batch of {len(campaign_batch)}...")
+    # Limit to 10 emails or custom count if specified
+    batch_size = 10
+    if len(sys.argv) > 1:
+        try:
+            batch_size = int(sys.argv[1])
+        except ValueError:
+            pass
+    campaign_batch = unemailed[:batch_size]
     
+    print("\n==================================================")
+    print("             OUTREACH CAMPAIGN PREVIEW            ")
+    print("==================================================")
+    print(f"Total recruiters found: {total_recruiters}")
+    print(f"Total emails collected: {emails_collected}")
+    print(f"Emails to be sent in this batch: {len(campaign_batch)}")
+    print("--------------------------------------------------")
+    for idx, contact in enumerate(campaign_batch, 1):
+        print(f"{idx:2d}. {contact['name']} ({contact['company']}) - {contact['email']}")
+    print("==================================================\n")
+    
+    confirm = input("Do you want to proceed with sending these cold emails? (y/n): ").strip().lower()
+    if confirm != 'y' and confirm != 'yes':
+        print("Campaign sending cancelled by user.")
+        sys.exit(0)
+        
     # 4. Initialize Gmail API
-    print("Initializing Gmail API...")
+    print("\nInitializing Gmail API...")
     try:
         service = get_gmail_service()
     except Exception as e:

@@ -100,7 +100,7 @@ The application features a Google Sheets integration to sync and manage your job
 
 ## Recruiter Outreach & Email Automation
 
-The project includes an automated pipeline to search for recruiters on LinkedIn, retrieve their contact details using the Apollo.io extension, track them in a 7-column spreadsheet, and securely batch-send cold outreach emails with resume attachments using the Gmail API (OAuth 2.0).
+The project includes a pipeline to track recruiter contacts in a 7-column spreadsheet, and securely batch-send cold outreach emails with resume attachments using the Gmail API (OAuth 2.0).
 
 ### 1. Prerequisites & Setup
 
@@ -121,29 +121,29 @@ The project includes an automated pipeline to search for recruiters on LinkedIn,
 
 ### 2. Execution Workflow
 
-#### Step A: Harvest Recruiter Contacts (LinkedIn + Apollo.io)
-Make sure Google Chrome is open on your desktop and run:
-```bash
-python3 find_linkedin_recruiters.py
-```
-* **How it works**: Connects to your running Chrome profile (via `browser-act` with remote debugging), queries LinkedIn for software recruiters at target companies (Autodesk, Airtel, Amex, etc.), clicks the Apollo.io widget on profile pages, extracts contact details, and appends them to your local list and Google Sheets as `Discovered`.
+#### Step A: Populate Recruiter Contacts
+You manually populate recruiter contacts in the local database or via the Google Sheet:
+* **Format**: Recruiter details are stored in `personal_data/email_list.md` with details (Company, Name, Recruiter Email, Role, LinkedIn Profile, Outreach Status = `Discovered`).
+* **Synchronization**: Run `sync_sheets.py` to synchronize changes between `personal_data/email_list.md` and the Google Sheet:
+  ```bash
+  python3 sync_sheets.py
+  ```
 
 #### Step B: Send Outreach Campaign
-Run the email campaign runner:
+Run the email campaign runner to send cold emails to the new contacts:
 ```bash
 python3 send_outreach_campaign.py
 ```
 * **How it works**:
-  1. Identifies any un-emailed recruiters (status `Discovered`) inside the database.
+  1. Identifies any un-emailed recruiters (status `Discovered`, `Not Sent`, or `""`) inside the database.
   2. Presents the list of recipients in the terminal and **waits for your explicit confirmation**.
-  3. Upon approval, compiles personalized HTML emails addressing recruiters by name, attaches your resume PDF, and sends them.
-  4. Automatically changes statuses to `Sent (YYYY-MM-DD)` and syncs updates to your Google Sheets.
+  3. Upon approval, compiles personalized HTML emails addressing recruiters by name, attaches your resume PDF, and sends them via the Gmail API.
+  4. Automatically updates statuses to `Sent (YYYY-MM-DD)` locally and syncs updates to your Google Sheet.
 
 ### 3. Pipeline Safeguards
 
 * **Explicit Consent**: The email sender script always pauses and requests permission before executing any email sends.
-* **Target Company Verification**: Automatically verifies the recruiter's headline on LinkedIn to make sure it contains the target company and role keywords (skipping external agencies and general employees).
-* **Thoughtworks Exclusion**: Built-in filters completely skip crawling, saving, or emailing any contacts associated with Thoughtworks.
+* **Thoughtworks Exclusion**: Built-in safety filters completely skip sending emails to any contacts associated with Thoughtworks (since you are already employed there).
 * **Header Verification**: Message formatting uses correct casing and natively sets `From: me`, avoiding Gmail "unauthenticated sender" alerts.
 
 ---
