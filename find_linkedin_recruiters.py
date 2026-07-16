@@ -10,7 +10,7 @@ from sync_sheets import parse_email_list, write_email_list_markdown, EMAIL_LIST_
 
 # Session and browser identifiers
 SESSION_NAME = "apollo-session"
-BROWSER_ID = "chrome-direct-apollo"
+BROWSER_NAME = "chrome-direct-apollo"
 BROWSER_ACT_PATH = "/Users/talus/.local/bin/browser-act"
 
 def run_cmd(args):
@@ -19,10 +19,25 @@ def run_cmd(args):
     result = subprocess.run(cmd, capture_output=True, text=True)
     return result.stdout.strip(), result.stderr.strip(), result.returncode
 
+def find_browser_id_by_name(name):
+    """Retrieves the browser ID dynamically from browser list by name."""
+    stdout, stderr, code = run_cmd(["browser", "list"])
+    if code != 0:
+        return None
+    # Search for browser pattern matching name
+    match = re.search(r'id=(\S+)\s+name="' + re.escape(name) + '"', stdout)
+    if match:
+        return match.group(1)
+    return None
+
 def start_session():
     """Opens the chrome-direct browser and starts a session."""
     print("Connecting to your local Chrome via browser-act...")
-    stdout, stderr, code = run_cmd(["--session", SESSION_NAME, "browser", "open", BROWSER_ID])
+    browser_id = find_browser_id_by_name(BROWSER_NAME)
+    if not browser_id:
+        print(f"Error: Could not find browser named '{BROWSER_NAME}'. Please ensure it was created.")
+        return False
+    stdout, stderr, code = run_cmd(["--session", SESSION_NAME, "browser", "open", browser_id, "https://www.linkedin.com/", "--allow-restart-chrome"])
     if code != 0:
         print(f"Error starting browser session: {stderr}")
         return False
@@ -42,13 +57,19 @@ def search_recruiters(company):
     time.sleep(5)
     run_cmd(["--session", SESSION_NAME, "wait", "stable", "--timeout", "10000"])
     
-    # Extract profile links
     js_extract_links = """
     (() => {
-      const links = Array.from(document.querySelectorAll('a.app-aware-link, .reusable-search__result-container a'))
-        .map(a => a.href)
-        .filter(href => href && href.includes('/in/') && !href.includes('/in/ACoAA'));
-      return JSON.stringify(Array.from(new Set(links)));
+      const results = [];
+      const links = Array.from(document.querySelectorAll('a'));
+      for (const a of links) {
+        if (a.href && a.href.includes('/in/') && !a.href.includes('/in/ACoAA')) {
+          const parentHTML = a.parentElement ? a.parentElement.innerHTML : '';
+          if (/ • (1st|2nd|3rd\\+)/.test(parentHTML)) {
+            results.push(a.href);
+          }
+        }
+      }
+      return JSON.stringify(Array.from(new Set(results)));
     })()
     """
     
@@ -74,10 +95,48 @@ def scrape_profile_and_email(profile_url):
     time.sleep(6)
     run_cmd(["--session", SESSION_NAME, "wait", "stable", "--timeout", "10000"])
     
-    # Extract profile name
-    js_name = "document.querySelector('h1')?.textContent.trim() || 'Unknown Recruiter'"
-    name, _, _ = run_cmd(["--session", SESSION_NAME, "eval", js_name])
-    name = name.strip('"')
+    # Extract profile name and headline using robust parsing script
+    js_profile_details = """
+    (() => {
+      const docTitle = document.title.split('|')[0].replace(/^\\(\\d+\\)\\s+/, '').trim();
+      if (!docTitle || docTitle.includes('LinkedIn') || docTitle.includes('Page Not Found')) {
+        return JSON.stringify({name: 'Unknown Recruiter', headline: 'Recruiter'});
+      }
+      const name = docTitle;
+      const elements = Array.from(document.querySelectorAll('*'));
+      let headline = 'Recruiter';
+      for (const el of elements) {
+        const text = el.textContent.trim();
+        if (text.includes(name) && text.includes('@') && text.length < 150) {
+          let h = text.replace(name, '').replace(/More|Message|Connect|Follow/g, '').trim();
+          if (h) {
+            headline = h;
+            break;
+          }
+        }
+      }
+      if (headline === 'Recruiter') {
+        for (const el of elements) {
+          const text = el.textContent.trim();
+          if (text.includes('@') && text.length < 100 && (text.toLowerCase().includes('recruiter') || text.toLowerCase().includes('talent') || text.toLowerCase().includes('hiring') || text.toLowerCase().includes('hr') || text.toLowerCase().includes('people') || text.toLowerCase().includes('acquisition'))) {
+            headline = text;
+            break;
+          }
+        }
+      }
+      return JSON.stringify({name: name, headline: headline});
+    })()
+    """
+    stdout_details, _, _ = run_cmd(["--session", SESSION_NAME, "eval", js_profile_details])
+    name = "Unknown Recruiter"
+    role = "Recruiter"
+    if stdout_details and stdout_details != "null":
+        try:
+            details = json.loads(stdout_details)
+            name = details.get("name", "Unknown Recruiter")
+            role = details.get("headline", "Recruiter")
+        except Exception:
+            pass
     
     # Locate and click Apollo button
     print("Looking for Apollo.io extension widget and 'Find Email' button...")
@@ -100,7 +159,8 @@ def scrape_profile_and_email(profile_url):
     """
     
     click_res, _, _ = run_cmd(["--session", SESSION_NAME, "eval", js_click_apollo])
-    print(f"Apollo Click Result: {click_res.strip('\"')}")
+    click_res_clean = click_res.strip('"')
+    print(f"Apollo Click Result: {click_res_clean}")
     
     # Wait for Apollo to fetch and render the email
     time.sleep(5)
@@ -130,18 +190,40 @@ def scrape_profile_and_email(profile_url):
             
     return {
         "name": name,
+        "role": role,
         "url": profile_url,
         "emails": emails
     }
 
+def is_recruiter_for_company(company, headline):
+    """Verifies that the recruiter's headline matches the target company and role."""
+    h_lower = headline.lower()
+    c_lower = company.lower()
+    
+    # Handle aliases
+    aliases = {
+        "bharti airtel": ["airtel"],
+        "american express": ["amex", "american express"],
+        "amex": ["amex", "american express"]
+    }
+    
+    targets = aliases.get(c_lower, [c_lower])
+    
+    # Verify company is in the headline
+    company_match = any(t in h_lower for t in targets)
+    
+    # Verify they are actually in recruitment/HR/TA
+    role_keywords = ["recruiter", "talent", "hiring", "hr", "people", "acquisition", "sourcing", "ta "]
+    role_match = any(r in h_lower for r in role_keywords)
+    
+    return company_match and role_match
+
 def main():
     sys.stdout.reconfigure(encoding='utf-8', newline='\n')
     
-    # List of preferred product/MNC companies based on your background and profile
     companies = [
         "Autodesk", 
         "Bharti Airtel", 
-        "Thoughtworks", 
         "American Express", 
         "Docusign",
         "Google",
@@ -170,6 +252,16 @@ def main():
                 email_str = ", ".join(recruiter["emails"]) if recruiter["emails"] else "Not Found"
                 print(f"Result: {recruiter['name']} ({company}) - Email: {email_str}")
                 
+                # Check name resolution
+                if recruiter["name"] == "Unknown Recruiter" or recruiter["name"] == "Unknown":
+                    print(f"Skipping {link} because profile name was not resolved successfully.")
+                    continue
+                    
+                # Validate company & role matches
+                if not is_recruiter_for_company(company, recruiter["role"]):
+                    print(f"Safety warning: Skipping {recruiter['name']} ({link}) because headline '{recruiter['role']}' does not match target company '{company}' or role keyword.")
+                    continue
+                
                 # If we successfully found email(s), add them to local MD
                 if recruiter["emails"]:
                     current_records = parse_email_list(EMAIL_LIST_MD)
@@ -181,7 +273,10 @@ def main():
                         if not exists:
                             current_records.append({
                                 "company": company,
+                                "name": recruiter["name"],
                                 "email": email,
+                                "role": recruiter["role"],
+                                "url": recruiter["url"],
                                 "status": "Discovered",
                                 "response": "No"
                             })

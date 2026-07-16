@@ -98,6 +98,56 @@ The application features a Google Sheets integration to sync and manage your job
 
 ---
 
+## Recruiter Outreach & Email Automation
+
+The project includes an automated pipeline to search for recruiters on LinkedIn, retrieve their contact details using the Apollo.io extension, track them in a 7-column spreadsheet, and securely batch-send cold outreach emails with resume attachments using the Gmail API (OAuth 2.0).
+
+### 1. Prerequisites & Setup
+
+1. **Install Dependencies**:
+   ```bash
+   pip install google-auth-oauthlib google-api-python-client gspread oauth2client
+   ```
+2. **Gmail API Credentials Setup**:
+   * Navigate to the **Google Cloud Console**, enable the **Gmail API**, and set up an OAuth Consent Screen.
+   * Download the credentials JSON, rename it to `gmail_credentials.json`, and place it in the root folder of this project.
+   * *Note: The first time you send an email, a browser sign-in prompt will verify access and securely store a persistent session in `gmail_token.json`.*
+3. **Google Sheets Credentials Setup**:
+   * Create a Service Account (or OAuth credential) on Google Cloud with access to the Sheets API.
+   * Save the credential JSON file as `google_sheet_credentials.json` in the root folder.
+4. **Outreach File Configuration**:
+   * Place your PDF resume in `personal_data/` and ensure its path matches `RESUME_PATH` inside `send_outreach_campaign.py`.
+   * Customize your subject and body templates inside `personal_data/Email_temp.md`. Bold markers (`**`) and bullet formatting will automatically compile as formatted HTML emails.
+
+### 2. Execution Workflow
+
+#### Step A: Harvest Recruiter Contacts (LinkedIn + Apollo.io)
+Make sure Google Chrome is open on your desktop and run:
+```bash
+python3 find_linkedin_recruiters.py
+```
+* **How it works**: Connects to your running Chrome profile (via `browser-act` with remote debugging), queries LinkedIn for software recruiters at target companies (Autodesk, Airtel, Amex, etc.), clicks the Apollo.io widget on profile pages, extracts contact details, and appends them to your local list and Google Sheets as `Discovered`.
+
+#### Step B: Send Outreach Campaign
+Run the email campaign runner:
+```bash
+python3 send_outreach_campaign.py
+```
+* **How it works**:
+  1. Identifies any un-emailed recruiters (status `Discovered`) inside the database.
+  2. Presents the list of recipients in the terminal and **waits for your explicit confirmation**.
+  3. Upon approval, compiles personalized HTML emails addressing recruiters by name, attaches your resume PDF, and sends them.
+  4. Automatically changes statuses to `Sent (YYYY-MM-DD)` and syncs updates to your Google Sheets.
+
+### 3. Pipeline Safeguards
+
+* **Explicit Consent**: The email sender script always pauses and requests permission before executing any email sends.
+* **Target Company Verification**: Automatically verifies the recruiter's headline on LinkedIn to make sure it contains the target company and role keywords (skipping external agencies and general employees).
+* **Thoughtworks Exclusion**: Built-in filters completely skip crawling, saving, or emailing any contacts associated with Thoughtworks.
+* **Header Verification**: Message formatting uses correct casing and natively sets `From: me`, avoiding Gmail "unauthenticated sender" alerts.
+
+---
+
 ## Data Privacy & Git Ignoring
 
 To prevent exposing private information (like your phone number, email address, and job search metrics) on public GitHub repositories, this project splits data into two files:

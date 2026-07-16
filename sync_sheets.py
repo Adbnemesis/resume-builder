@@ -19,7 +19,7 @@ JOBS_CSV = './job_results.csv'
 EMAIL_LIST_MD = './personal_data/email_list.md'
 
 def parse_email_list(file_path):
-    """Parses email records from email_list.md."""
+    """Parses email records from email_list.md using the 7-column format."""
     records = []
     if not os.path.exists(file_path):
         return records
@@ -32,22 +32,30 @@ def parse_email_list(file_path):
         if not line or line.startswith("#") or line.startswith("|-") or line.startswith("| -"):
             continue
             
-        # Check if it's already a markdown table line
+        # Check if it's a markdown table line
         if line.startswith("|"):
             parts = [p.strip() for p in line.split("|")]
-            # Table format: | Empty | Company | Email | Status | Response | Empty |
-            if len(parts) >= 5 and parts[1] != "Company" and not parts[1].startswith("---"):
+            # Table format: | Empty | Company | Name | Recruiter Email | Role | LinkedIn Profile | Outreach Status | Reply Status | Empty |
+            if len(parts) >= 8 and parts[1] != "Company" and not parts[1].startswith("---"):
                 company = parts[1]
-                emails = [e.strip() for e in re.split(r'[,; ]+', parts[2]) if e.strip() and "@" in e]
+                name = parts[2]
+                emails = [e.strip() for e in re.split(r'[,; ]+', parts[3]) if e.strip() and "@" in e]
+                role = parts[4] if len(parts) > 4 else "Recruiter"
+                url = parts[5] if len(parts) > 5 else "N/A"
+                status = parts[6] if len(parts) > 6 else "Discovered"
+                reply = parts[7] if len(parts) > 7 else "No"
                 for email in emails:
                     records.append({
                         "company": company,
+                        "name": name if name else "Unknown",
                         "email": email,
-                        "status": parts[3] if len(parts) > 3 else "Discovered",
-                        "response": parts[4] if len(parts) > 4 else "No"
+                        "role": role if role else "Recruiter",
+                        "url": url if url else "N/A",
+                        "status": status if status else "Discovered",
+                        "response": reply if reply else "No"
                     })
         else:
-            # Text format: Company - email1, email2
+            # Fallback for loose text format: Company - email1, email2
             parts = re.split(r'\s*-\s*|\s*-\s*', line, maxsplit=1)
             if len(parts) == 2:
                 company = parts[0].strip()
@@ -55,22 +63,31 @@ def parse_email_list(file_path):
                 for email in emails:
                     records.append({
                         "company": company,
+                        "name": "Unknown",
                         "email": email,
+                        "role": "Recruiter",
+                        "url": "N/A",
                         "status": "Discovered",
                         "response": "No"
                     })
     return records
 
 def write_email_list_markdown(file_path, records):
-    """Writes the synchronized email list back to email_list.md as a clean table."""
-    # Deduplicate records by (company, email) keeping the most advanced status
+    """Writes the synchronized email list back to email_list.md as a clean 7-column table."""
+    # Deduplicate records by (company, email) keeping the most advanced values
     unique_records = {}
     for r in records:
         key = (r["company"], r["email"])
         if key not in unique_records:
             unique_records[key] = r
         else:
-            # Overwrite only if status is more descriptive than "Discovered"
+            # Merge fields, keeping the most populated/advanced ones
+            if r["name"] != "Unknown" and unique_records[key]["name"] == "Unknown":
+                unique_records[key]["name"] = r["name"]
+            if r["role"] != "Recruiter" and unique_records[key]["role"] == "Recruiter":
+                unique_records[key]["role"] = r["role"]
+            if r["url"] != "N/A" and unique_records[key]["url"] == "N/A":
+                unique_records[key]["url"] = r["url"]
             if r["status"] != "Discovered":
                 unique_records[key]["status"] = r["status"]
             if r["response"] != "No":
@@ -83,10 +100,10 @@ def write_email_list_markdown(file_path, records):
 
     with open(file_path, "w", encoding="utf-8") as f:
         f.write("# Recruiter Outreach List\n\n")
-        f.write("| Company | Recruiter Email | Outreach Status | Got Response? |\n")
-        f.write("|---|---|---|---|\n")
+        f.write("| Company | Name | Recruiter Email | Role | LinkedIn Profile | Outreach Status | Reply Status |\n")
+        f.write("|---|---|---|---|---|---|---|\n")
         for r in sorted_records:
-            f.write(f"| {r['company']} | {r['email']} | {r['status']} | {r['response']} |\n")
+            f.write(f"| {r['company']} | {r['name']} | {r['email']} | {r['role']} | {r['url']} | {r['status']} | {r['response']} |\n")
             
     print(f"Formatted and updated local '{file_path}' with latest sheet statuses.")
 
@@ -215,16 +232,17 @@ def main():
             body=batch_update_request_body
         ).execute()
 
-    # Fetch recruiter rows from sheet
+    # Fetch recruiter rows from sheet (7 columns now: A:G)
     result_rec = sheet_service.values().get(
         spreadsheetId=SPREADSHEET_ID,
-        range=f"'{rec_sheet_name}'!A:E"
+        range=f"'{rec_sheet_name}'!A:G"
     ).execute()
     
     rec_rows = result_rec.get('values', [])
-    rec_headers = ["Company", "Email", "Status", "Date Sent", "Response Received"]
+    rec_headers = ["Company", "Name", "Email", "Role", "LinkedIn Profile", "Status", "Reply Status"]
     
-    if not rec_rows:
+    # Initialize sheet headers if empty or outdated (we overwrite header if columns != 7)
+    if not rec_rows or len(rec_rows[0]) != 7:
         body = {'values': [rec_headers]}
         sheet_service.values().update(
             spreadsheetId=SPREADSHEET_ID,
@@ -233,26 +251,27 @@ def main():
             body=body
         ).execute()
         rec_rows = [rec_headers]
-        print(f"Initialized headers in sheet '{rec_sheet_name}'.")
+        print(f"Initialized/Updated 7-column headers in sheet '{rec_sheet_name}'.")
 
     # Map sheet emails to their metadata
     sheet_data = {}
     for row in rec_rows[1:]:
-        if len(row) >= 2:
+        if len(row) >= 3:
             company = row[0].strip()
-            email = row[1].strip()
-            status = row[2].strip() if len(row) > 2 else "Discovered"
-            date_sent = row[3].strip() if len(row) > 3 else "-"
-            response = row[4].strip() if len(row) > 4 else "No"
-            # Ignore bad entries that were formatted poorly
-            if "databricks.comQualcomm" in email or (company.lower() == "databricks" and email.lower() == "pnikhade@qualcomm.com"):
-                continue
+            name = row[1].strip()
+            email = row[2].strip()
+            role = row[3].strip() if len(row) > 3 else "Recruiter"
+            url = row[4].strip() if len(row) > 4 else "N/A"
+            status = row[5].strip() if len(row) > 5 else "Discovered"
+            response = row[6].strip() if len(row) > 6 else "No"
             sheet_data[(company.lower(), email.lower())] = {
                 "company": company,
+                "name": name if name else "Unknown",
                 "email": email,
-                "status": status,
-                "date_sent": date_sent,
-                "response": response
+                "role": role if role else "Recruiter",
+                "url": url if url else "N/A",
+                "status": status if status else "Discovered",
+                "response": response if response else "No"
             }
 
     # Load local records
@@ -265,7 +284,10 @@ def main():
         key = (r["company"].lower(), r["email"].lower())
         all_records_map[key] = {
             "company": r["company"],
+            "name": r["name"],
             "email": r["email"],
+            "role": r["role"],
+            "url": r["url"],
             "status": r["status"],
             "response": r["response"]
         }
@@ -274,11 +296,22 @@ def main():
         if key not in all_records_map:
             all_records_map[key] = {
                 "company": val["company"],
+                "name": val["name"],
                 "email": val["email"],
+                "role": val["role"],
+                "url": val["url"],
                 "status": val["status"],
                 "response": val["response"]
             }
         else:
+            # Merge details
+            if val["name"] != "Unknown" and all_records_map[key]["name"] == "Unknown":
+                all_records_map[key]["name"] = val["name"]
+            if val["role"] != "Recruiter" and all_records_map[key]["role"] == "Recruiter":
+                all_records_map[key]["role"] = val["role"]
+            if val["url"] != "N/A" and all_records_map[key]["url"] == "N/A":
+                all_records_map[key]["url"] = val["url"]
+                
             # Keep the more advanced status between local and sheet
             local_status = all_records_map[key]["status"]
             sheet_status = val["status"]
@@ -296,11 +329,11 @@ def main():
 
     sorted_records = sorted(all_records_map.values(), key=lambda x: (x["company"].lower(), x["email"].lower()))
 
-    # Clear existing sheet values under headers
+    # Clear existing sheet values under headers (G1000 now!)
     print("Clearing old rows from Google Sheet...")
     sheet_service.values().clear(
         spreadsheetId=SPREADSHEET_ID,
-        range=f"'{rec_sheet_name}'!A2:E1000"
+        range=f"'{rec_sheet_name}'!A2:G1000"
     ).execute()
 
     # Write clean merged records
@@ -308,9 +341,11 @@ def main():
     for r in sorted_records:
         sheet_rows.append([
             r["company"],
+            r["name"],
             r["email"],
+            r["role"],
+            r["url"],
             r["status"],
-            "-",
             r["response"]
         ])
         

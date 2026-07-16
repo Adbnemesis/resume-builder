@@ -87,13 +87,20 @@ def main():
         company = contact["company"]
         recipient = contact["email"]
         
+        # Safety Check: Never email Thoughtworks (since user already works there)
+        if "thoughtworks" in company.lower() or "thoughtworks" in recipient.lower():
+            print(f"Safety warning: Skipping {recipient} ({company}) because user is already employed at Thoughtworks.")
+            continue
+            
         print(f"\n[{sent_count+1}/{len(campaign_batch)}] Preparing email to {recipient} ({company})...")
         
         # Customize subject & body placeholders
         subject = subject_template.replace("[Company Name]", company).replace("[Company]", company)
         body = body_template.replace("[Company Name]", company).replace("[Company]", company)
-        body = body.replace("[Hiring Manager / Recruiter Name]", "Hiring Manager")
-        body = body.replace("[Hiring Manager]", "Hiring Manager")
+        
+        recruiter_name = contact["name"] if contact["name"] != "Unknown" else "Hiring Manager"
+        body = body.replace("[Hiring Manager / Recruiter Name]", recruiter_name)
+        body = body.replace("[Hiring Manager]", recruiter_name)
         
         # Send email with attachment
         res = send_message(
