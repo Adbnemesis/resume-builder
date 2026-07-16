@@ -13,6 +13,8 @@ job_results.md
 *.token
 credentials.json
 google_sheet_credentials.json
+gmail_credentials.json
+gmail_token.json
 secrets.json
 
 # IDE / Editor configuration
