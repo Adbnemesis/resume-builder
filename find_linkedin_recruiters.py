@@ -44,47 +44,57 @@ def start_session():
     print("Connected successfully!")
     return True
 
+import urllib.parse
+
 def search_recruiters(company):
-    """Searches for software recruiters for a specific company in India."""
-    # Construct targeted search URL
-    query = f"recruiter software {company} India"
-    search_url = f"https://www.linkedin.com/search/results/people/?keywords={query.replace(' ', '%20')}"
-    
-    print(f"\nSearching LinkedIn for recruiters at '{company}'...")
-    run_cmd(["--session", SESSION_NAME, "navigate", search_url])
-    
-    # Wait for page stable
-    time.sleep(5)
-    run_cmd(["--session", SESSION_NAME, "wait", "stable", "--timeout", "10000"])
-    
-    js_extract_links = """
-    (() => {
-      const results = [];
-      const links = Array.from(document.querySelectorAll('a'));
-      for (const a of links) {
-        if (a.href && a.href.includes('/in/') && !a.href.includes('/in/ACoAA')) {
-          const parentHTML = a.parentElement ? a.parentElement.innerHTML : '';
-          if (/ • (1st|2nd|3rd\\+)/.test(parentHTML)) {
-            results.push(a.href);
-          }
-        }
-      }
-      return JSON.stringify(Array.from(new Set(results)));
-    })()
-    """
-    
-    stdout, stderr, code = run_cmd(["--session", SESSION_NAME, "eval", js_extract_links])
-    if code != 0:
-        print(f"Error evaluating profile link extractor JS: {stderr}")
-        return []
+    """Searches for software recruiters for a specific company in India across page 1 and 2."""
+    all_links = []
+    for page in [1, 2]:
+        query = f"recruiter software {company} India"
+        search_url = f"https://www.linkedin.com/search/results/people/?keywords={urllib.parse.quote(query)}&page={page}"
         
-    try:
-        profile_links = json.loads(stdout)
-        # Limit to top 3 results to avoid triggering captcha / rate limits rapidly
-        return profile_links[:3]
-    except Exception as e:
-        print(f"Failed to parse profile links: {stdout}. Error: {e}")
-        return []
+        print(f"\nSearching LinkedIn for recruiters at '{company}' (Page {page})...")
+        run_cmd(["--session", SESSION_NAME, "navigate", search_url])
+        
+        # Wait for page stable
+        time.sleep(6)
+        run_cmd(["--session", SESSION_NAME, "wait", "stable", "--timeout", "10000"])
+        
+        js_extract_links = """
+        (() => {
+          const results = [];
+          const links = Array.from(document.querySelectorAll('a'));
+          for (const a of links) {
+            if (a.href && a.href.includes('/in/') && !a.href.includes('/in/ACoAA')) {
+              const parentHTML = a.parentElement ? a.parentElement.innerHTML : '';
+              if (/ • (1st|2nd|3rd\\+)/.test(parentHTML)) {
+                results.push(a.href);
+              }
+            }
+          }
+          return JSON.stringify(Array.from(new Set(results)));
+        })()
+        """
+        
+        stdout, stderr, code = run_cmd(["--session", SESSION_NAME, "eval", js_extract_links])
+        if code == 0:
+            try:
+                page_links = json.loads(stdout)
+                all_links.extend(page_links)
+            except Exception as e:
+                print(f"Failed to parse page links: {e}")
+        else:
+            print(f"Error evaluating profile link extractor JS: {stderr}")
+            
+    # Deduplicate all links by href
+    seen_hrefs = set()
+    deduped_links = []
+    for link in all_links:
+        if link and link not in seen_hrefs:
+            seen_hrefs.add(link)
+            deduped_links.append(link)
+            
+    return deduped_links[:8]
 
 def scrape_profile_and_email(profile_url):
     """Navigates to a profile, clicks Apollo button, and extracts email."""
@@ -222,9 +232,20 @@ def main():
     sys.stdout.reconfigure(encoding='utf-8', newline='\n')
     
     companies = [
-        "Autodesk", 
-        "Bharti Airtel", 
-        "American Express", 
+        "Adobe",
+        "Atlassian",
+        "Mastercard",
+        "Qualcomm",
+        "Flipkart",
+        "Amdocs",
+        "Akamai",
+        "Barclays",
+        "Databricks",
+        "Doordash",
+        "Ebay",
+        "Autodesk",
+        "Bharti Airtel",
+        "American Express",
         "Docusign",
         "Google",
         "Visa",

@@ -103,7 +103,15 @@ def write_email_list_markdown(file_path, records):
         f.write("| Company | Name | Recruiter Email | Role | LinkedIn Profile | Outreach Status | Reply Status |\n")
         f.write("|---|---|---|---|---|---|---|\n")
         for r in sorted_records:
-            f.write(f"| {r['company']} | {r['name']} | {r['email']} | {r['role']} | {r['url']} | {r['status']} | {r['response']} |\n")
+            # Sanitize pipe symbols to avoid breaking markdown tables
+            company = str(r['company']).replace('|', '/')
+            name = str(r['name']).replace('|', '/')
+            email = str(r['email']).replace('|', '/')
+            role = str(r['role']).replace('|', '/')
+            url = str(r['url']).replace('|', '/')
+            status = str(r['status']).replace('|', '/')
+            response = str(r['response']).replace('|', '/')
+            f.write(f"| {company} | {name} | {email} | {role} | {url} | {status} | {response} |\n")
             
     print(f"Formatted and updated local '{file_path}' with latest sheet statuses.")
 
