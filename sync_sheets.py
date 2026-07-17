@@ -324,7 +324,11 @@ def main():
             local_status = all_records_map[key]["status"]
             sheet_status = val["status"]
             
-            if "sent" in sheet_status.lower() or "got" in sheet_status.lower():
+            if "outdated" in local_status.lower() or "bounce" in local_status.lower():
+                all_records_map[key]["status"] = local_status
+            elif "outdated" in sheet_status.lower() or "bounce" in sheet_status.lower():
+                all_records_map[key]["status"] = sheet_status
+            elif "sent" in sheet_status.lower() or "got" in sheet_status.lower():
                 all_records_map[key]["status"] = sheet_status
             elif "sent" in local_status.lower() or "got" in local_status.lower():
                 all_records_map[key]["status"] = local_status

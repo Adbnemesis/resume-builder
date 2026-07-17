@@ -7,8 +7,11 @@ from google.auth.transport.requests import Request
 from google_auth_oauthlib.flow import InstalledAppFlow
 from googleapiclient.discovery import build
 
-# Scope required to send emails
-SCOPES = ['https://www.googleapis.com/auth/gmail.send']
+# Scopes required to send and read emails
+SCOPES = [
+    'https://www.googleapis.com/auth/gmail.send',
+    'https://www.googleapis.com/auth/gmail.readonly'
+]
 
 def get_gmail_service():
     """Authenticates the user and returns the Gmail API service object."""
