@@ -140,6 +140,16 @@ python3 send_outreach_campaign.py
   3. Upon approval, compiles personalized HTML emails addressing recruiters by name, attaches your resume PDF, and sends them via the Gmail API.
   4. Automatically updates statuses to `Sent (YYYY-MM-DD)` locally and syncs updates to your Google Sheet.
 
+#### Step C: Scan and Clean Bounced Emails
+To clean outdated email addresses from your lists, run the bounce checking script:
+```bash
+python3 check_bounces.py
+```
+* **How it works**:
+  1. Securely queries your Gmail account (using `gmail.readonly` scope) for mailer-daemon bounce messages received in the last 2 days.
+  2. Parses failed email addresses and identifies matching contacts in your recruiter list.
+  3. Automatically updates their outreach status to `Outdated / Bounced` in `personal_data/email_list.md` and synchronizes the updates with your Google Sheet to prevent emailing them in future runs.
+
 ### 3. Pipeline Safeguards
 
 * **Explicit Consent**: The email sender script always pauses and requests permission before executing any email sends.
