@@ -24,15 +24,15 @@ def get_message_body(payload):
     return ""
 
 def main():
-    # Pre-check token scopes: if gmail.readonly not in scopes, delete token
+    # Pre-check token scopes: if gmail.modify not in scopes, delete token
     if os.path.exists('gmail_token.json'):
         import pickle
         try:
             with open('gmail_token.json', 'rb') as f:
                 creds = pickle.load(f)
             # Check scopes
-            if not any('gmail.readonly' in s for s in creds.scopes):
-                print("Existing token lacks read permissions. Removing it to trigger re-auth...")
+            if not any('gmail.modify' in s for s in creds.scopes):
+                print("Existing token lacks modify permissions. Removing it to trigger re-auth...")
                 os.remove('gmail_token.json')
         except Exception:
             pass
