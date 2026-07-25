@@ -19,7 +19,7 @@ JOBS_CSV = './job_results.csv'
 EMAIL_LIST_MD = './personal_data/email_list.md'
 
 def parse_email_list(file_path):
-    """Parses email records from email_list.md using the 7-column format."""
+    """Parses email records from email_list.md using the 8-column format."""
     records = []
     if not os.path.exists(file_path):
         return records
@@ -35,7 +35,7 @@ def parse_email_list(file_path):
         # Check if it's a markdown table line
         if line.startswith("|"):
             parts = [p.strip() for p in line.split("|")]
-            # Table format: | Empty | Company | Name | Recruiter Email | Role | LinkedIn Profile | Outreach Status | Reply Status | Empty |
+            # Table format: | Empty | Company | Name | Recruiter Email | Role | LinkedIn Profile | Outreach Status | Reply Status | Follow on sent? | Empty |
             if len(parts) >= 8 and parts[1] != "Company" and not parts[1].startswith("---"):
                 company = parts[1]
                 name = parts[2]
@@ -44,6 +44,7 @@ def parse_email_list(file_path):
                 url = parts[5] if len(parts) > 5 else "N/A"
                 status = parts[6] if len(parts) > 6 else "Discovered"
                 reply = parts[7] if len(parts) > 7 else "No"
+                followup = parts[8] if len(parts) > 8 else "No"
                 for email in emails:
                     records.append({
                         "company": company,
@@ -52,7 +53,8 @@ def parse_email_list(file_path):
                         "role": role if role else "Recruiter",
                         "url": url if url else "N/A",
                         "status": status if status else "Discovered",
-                        "response": reply if reply else "No"
+                        "response": reply if reply else "No",
+                        "followup": followup if followup else "No"
                     })
         else:
             # Fallback for loose text format: Company - email1, email2
@@ -68,12 +70,13 @@ def parse_email_list(file_path):
                         "role": "Recruiter",
                         "url": "N/A",
                         "status": "Discovered",
-                        "response": "No"
+                        "response": "No",
+                        "followup": "No"
                     })
     return records
 
 def write_email_list_markdown(file_path, records):
-    """Writes the synchronized email list back to email_list.md as a clean 7-column table."""
+    """Writes the synchronized email list back to email_list.md as a clean 8-column table."""
     # Deduplicate records by (company, email) keeping the most advanced values
     unique_records = {}
     for r in records:
@@ -92,6 +95,8 @@ def write_email_list_markdown(file_path, records):
                 unique_records[key]["status"] = r["status"]
             if r["response"] != "No":
                 unique_records[key]["response"] = r["response"]
+            if r.get("followup", "No") != "No":
+                unique_records[key]["followup"] = r["followup"]
 
     sorted_records = sorted(unique_records.values(), key=lambda x: (x["company"].lower(), x["email"].lower()))
 
@@ -100,8 +105,8 @@ def write_email_list_markdown(file_path, records):
 
     with open(file_path, "w", encoding="utf-8") as f:
         f.write("# Recruiter Outreach List\n\n")
-        f.write("| Company | Name | Recruiter Email | Role | LinkedIn Profile | Outreach Status | Reply Status |\n")
-        f.write("|---|---|---|---|---|---|---|\n")
+        f.write("| Company | Name | Recruiter Email | Role | LinkedIn Profile | Outreach Status | Reply Status | Follow on sent? |\n")
+        f.write("|---|---|---|---|---|---|---|---|\n")
         for r in sorted_records:
             # Sanitize pipe symbols to avoid breaking markdown tables
             company = str(r['company']).replace('|', '/')
@@ -111,7 +116,8 @@ def write_email_list_markdown(file_path, records):
             url = str(r['url']).replace('|', '/')
             status = str(r['status']).replace('|', '/')
             response = str(r['response']).replace('|', '/')
-            f.write(f"| {company} | {name} | {email} | {role} | {url} | {status} | {response} |\n")
+            followup = str(r.get('followup', 'No')).replace('|', '/')
+            f.write(f"| {company} | {name} | {email} | {role} | {url} | {status} | {response} | {followup} |\n")
             
     print(f"Formatted and updated local '{file_path}' with latest sheet statuses.")
 
@@ -240,17 +246,17 @@ def main():
             body=batch_update_request_body
         ).execute()
 
-    # Fetch recruiter rows from sheet (7 columns now: A:G)
+    # Fetch recruiter rows from sheet (8 columns now: A:H)
     result_rec = sheet_service.values().get(
         spreadsheetId=SPREADSHEET_ID,
-        range=f"'{rec_sheet_name}'!A:G"
+        range=f"'{rec_sheet_name}'!A:H"
     ).execute()
     
     rec_rows = result_rec.get('values', [])
-    rec_headers = ["Company", "Name", "Email", "Role", "LinkedIn Profile", "Status", "Reply Status"]
+    rec_headers = ["Company", "Name", "Email", "Role", "LinkedIn Profile", "Status", "Reply Status", "Follow on sent?"]
     
-    # Initialize sheet headers if empty or outdated (we overwrite header if columns != 7)
-    if not rec_rows or len(rec_rows[0]) != 7:
+    # Initialize sheet headers if empty or outdated (we overwrite header if columns != 8)
+    if not rec_rows or len(rec_rows[0]) != 8:
         body = {'values': [rec_headers]}
         sheet_service.values().update(
             spreadsheetId=SPREADSHEET_ID,
@@ -259,8 +265,8 @@ def main():
             body=body
         ).execute()
         rec_rows = [rec_headers]
-        print(f"Initialized/Updated 7-column headers in sheet '{rec_sheet_name}'.")
-
+        print(f"Initialized/Updated 8-column headers in sheet '{rec_sheet_name}'.")
+ 
     # Map sheet emails to their metadata
     sheet_data = {}
     for row in rec_rows[1:]:
@@ -272,6 +278,7 @@ def main():
             url = row[4].strip() if len(row) > 4 else "N/A"
             status = row[5].strip() if len(row) > 5 else "Discovered"
             response = row[6].strip() if len(row) > 6 else "No"
+            followup = row[7].strip() if len(row) > 7 else "No"
             sheet_data[(company.lower(), email.lower())] = {
                 "company": company,
                 "name": name if name else "Unknown",
@@ -279,7 +286,8 @@ def main():
                 "role": role if role else "Recruiter",
                 "url": url if url else "N/A",
                 "status": status if status else "Discovered",
-                "response": response if response else "No"
+                "response": response if response else "No",
+                "followup": followup if followup else "No"
             }
 
     # Load local records
@@ -297,7 +305,8 @@ def main():
             "role": r["role"],
             "url": r["url"],
             "status": r["status"],
-            "response": r["response"]
+            "response": r["response"],
+            "followup": r.get("followup", "No")
         }
         
     for key, val in sheet_data.items():
@@ -309,7 +318,8 @@ def main():
                 "role": val["role"],
                 "url": val["url"],
                 "status": val["status"],
-                "response": val["response"]
+                "response": val["response"],
+                "followup": val["followup"]
             }
         else:
             # Merge details
@@ -338,14 +348,18 @@ def main():
             # Prioritize response if either is marked Yes
             if val["response"].lower() == "yes" or all_records_map[key]["response"].lower() == "yes":
                 all_records_map[key]["response"] = "Yes"
+                
+            # Prioritize followup if either is marked Yes
+            if val["followup"].lower() == "yes" or all_records_map[key].get("followup", "No").lower() == "yes":
+                all_records_map[key]["followup"] = "Yes"
 
     sorted_records = sorted(all_records_map.values(), key=lambda x: (x["company"].lower(), x["email"].lower()))
 
-    # Clear existing sheet values under headers (G1000 now!)
+    # Clear existing sheet values under headers (H1000 now!)
     print("Clearing old rows from Google Sheet...")
     sheet_service.values().clear(
         spreadsheetId=SPREADSHEET_ID,
-        range=f"'{rec_sheet_name}'!A2:G1000"
+        range=f"'{rec_sheet_name}'!A2:H1000"
     ).execute()
 
     # Write clean merged records
@@ -358,7 +372,8 @@ def main():
             r["role"],
             r["url"],
             r["status"],
-            r["response"]
+            r["response"],
+            r.get("followup", "No")
         ])
         
     if sheet_rows:
