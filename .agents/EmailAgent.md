@@ -27,6 +27,13 @@ You must follow these rules strictly when managing recruiter lists and executing
     ```bash
     python3 check_bounces.py
     ```
+7.  **Follow-up Campaign**: Run the follow-up campaign script to message recruiters who haven't replied to the initial outreach:
+    ```bash
+    python3 send_followup_campaign.py [batch_size]
+    ```
+    *   Ensure follow-ups only target contacts where `Outreach Status` contains `Sent`, `Reply Status` is `No`, and `Follow on sent?` is `No` (or empty).
+    *   Never follow up with contacts marked `Outdated / Bounced`.
+    *   Verify synchronization to local list and Google Sheets.
 
 ---
 

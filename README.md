@@ -150,6 +150,21 @@ python3 check_bounces.py
   2. Parses failed email addresses and identifies matching contacts in your recruiter list.
   3. Automatically updates their outreach status to `Outdated / Bounced` in `personal_data/email_list.md` and synchronizes the updates with your Google Sheet to prevent emailing them in future runs.
 
+#### Step D: Send Follow-up Campaign
+For recruiters who were sent initial emails but have not yet replied, run the follow-up campaign script:
+```bash
+python3 send_followup_campaign.py [batch_size]
+```
+* **How it works**:
+  1. Identifies recruiters where:
+     * An initial email has been sent (`Outreach Status` contains `Sent`).
+     * The email address did not bounce (`Outreach Status` is not `Outdated / Bounced`).
+     * No reply has been received (`Reply Status` is `No`).
+     * A follow-up email has not yet been sent (`Follow on sent?` is `No` or empty).
+  2. Displays a preview of target contacts (default batch size: 10) and waits for your confirmation.
+  3. Sends the personalized follow-up email (using `personal_data/Followup_Email_temp.md`) with your resume attached.
+  4. Updates the local `Follow on sent?` status to `Sent (YYYY-MM-DD)` and synchronizes changes to Google Sheets.
+
 ### 3. Pipeline Safeguards
 
 * **Explicit Consent**: The email sender script always pauses and requests permission before executing any email sends.
