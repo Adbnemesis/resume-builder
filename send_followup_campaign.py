@@ -91,13 +91,18 @@ def main():
         print("  * Follow-on not already sent")
         sys.exit(0)
         
-    # Limit to 10 follow-ups or custom count if specified
+    # Limit to 10 follow-ups or custom count if specified, supporting bypass flags
     batch_size = 10
-    if len(sys.argv) > 1:
-        try:
-            batch_size = int(sys.argv[1])
-        except ValueError:
-            pass
+    bypass_confirm = False
+    for arg in sys.argv[1:]:
+        if arg in ["--yes", "-y"]:
+            bypass_confirm = True
+        else:
+            try:
+                batch_size = int(arg)
+            except ValueError:
+                pass
+                
     campaign_batch = followup_targets[:batch_size]
     
     print("\n==================================================")
@@ -111,10 +116,13 @@ def main():
         print(f"{idx:2d}. {contact['name']} ({contact['company']}) - {contact['email']} [Sent on: {contact['status']}]")
     print("==================================================\n")
     
-    confirm = input("Do you want to proceed with sending these follow-up emails? (y/n): ").strip().lower()
-    if confirm != 'y' and confirm != 'yes':
-        print("Campaign sending cancelled by user.")
-        sys.exit(0)
+    if bypass_confirm:
+        print("Bypassing confirmation prompt (--yes / -y specified)...")
+    else:
+        confirm = input("Do you want to proceed with sending these follow-up emails? (y/n): ").strip().lower()
+        if confirm != 'y' and confirm != 'yes':
+            print("Campaign sending cancelled by user.")
+            sys.exit(0)
         
     # 4. Initialize Gmail API
     print("\nInitializing Gmail API...")

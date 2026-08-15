@@ -355,11 +355,11 @@ def main():
 
     sorted_records = sorted(all_records_map.values(), key=lambda x: (x["company"].lower(), x["email"].lower()))
 
-    # Clear existing sheet values under headers (H1000 now!)
+    # Clear existing sheet values under headers (full columns)
     print("Clearing old rows from Google Sheet...")
     sheet_service.values().clear(
         spreadsheetId=SPREADSHEET_ID,
-        range=f"'{rec_sheet_name}'!A2:H1000"
+        range=f"'{rec_sheet_name}'!A2:H"
     ).execute()
 
     # Write clean merged records

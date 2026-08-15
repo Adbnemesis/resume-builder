@@ -24,9 +24,14 @@ def get_gmail_service():
     # If there are no (valid) credentials available, let the user log in.
     if not creds or not creds.valid:
         if creds and creds.expired and creds.refresh_token:
-            print("Refreshing expired Gmail access token...")
-            creds.refresh(Request())
-        else:
+            try:
+                print("Refreshing expired Gmail access token...")
+                creds.refresh(Request())
+            except Exception as e:
+                print(f"Token refresh failed ({e}). Re-authenticating via browser flow...")
+                creds = None
+                
+        if not creds:
             if not os.path.exists('gmail_credentials.json'):
                 raise FileNotFoundError(
                     "gmail_credentials.json file not found in the project root directory.\n"

@@ -16,6 +16,7 @@ google_sheet_credentials.json
 gmail_credentials.json
 gmail_token.json
 secrets.json
+token.json
 
 # IDE / Editor configuration
 .vscode/
@@ -48,6 +49,10 @@ pip-delete-this-directory.txt
 
 # Private Personal Data folder
 personal_data/
+
+# Logs
+*.log
+daily_campaign.log
 
 # Temporary script artifacts
 editable_resume/shubhit_text.txt
