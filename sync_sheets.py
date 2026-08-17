@@ -18,6 +18,94 @@ TOKEN_FILE = '/Users/talus/.gemini/antigravity-ide/brain/fc235cc2-a94c-4329-aace
 JOBS_CSV = './job_results.csv'
 EMAIL_LIST_MD = './personal_data/email_list.md'
 
+# Priority 1: Elite Tier 1 Product MNCs, Tech Giants, HFT/Quant, Top FinTechs & Tier 1 Unicorns (40L - 1Cr+)
+PRIORITY_1_KEYWORDS = [
+    'google', 'microsoft', 'amazon', 'meta', 'facebook', 'apple', 'netflix', 'uber',
+    'linkedin', 'atlassian', 'adobe', 'salesforce', 'servicenow', 'intuit', 'paypal',
+    'stripe', 'databricks', 'snowflake', 'rubrik', 'twilio', 'palantir', 'nutanix',
+    'dropbox', 'github', 'splunk', 'crowdstrike', 'okta', 'palo alto', 'cloudflare',
+    'pure storage', 'arista', 'nvidia', 'broadcom', 'cohesity', 'zscaler', 'sentinelone',
+    'hashicorp', 'confluent', 'elastic', 'mongodb', 'redis', 'singlestore', 'cockroach',
+    'clickhouse', 'datadog', 'grafana', 'sentry', 'vercel', 'airbnb', 'booking.com',
+    'glean', 'postman',
+    'tower research', 'quadeye', 'graviton', 'worldquant', 'de shaw', 'citadel',
+    'jump trading', 'jane street', 'hudson river', 'two sigma', 'optiver',
+    'morgan stanley', 'goldman sachs', 'jpmorgan', 'jpmc', 'american express', 'amex',
+    'capital one',
+    'swiggy', 'zomato', 'blinkit', 'flipkart', 'zepto', 'meesho', 'razorpay',
+    'phonepe', 'cred', 'groww', 'zerodha', 'dream11', 'games24x7', 'browserstack'
+]
+
+# Priority 2: Tier 2 Product MNCs, Tech Unicorns, Global Banks, Semiconductor, GCCs (25L - 50L+)
+PRIORITY_2_KEYWORDS = [
+    'delhivery', 'oyo', 'makemytrip', 'goibibo', 'cleartrip', 'ixigo', 'redbus',
+    'rapido', 'ola', 'blusmart', 'ather', 'spinny', 'cars24', 'cardekho',
+    'paytm', 'mobikwik', 'cashfree', 'juspay', 'setu', 'slice', 'navi',
+    'bharatpe', 'onecard', 'coindcx', 'coinswitch', 'payu', 'angel one', 'upstox',
+    'barclays', 'deutsche bank', 'ubs', 'standard chartered', 'hsbc', 'wells fargo',
+    'bny mellon', 'bank of america', 'fidelity', 'blackrock', 'citi', 'mastercard',
+    'visa', 'dbs bank', 'pine labs', 'perfios',
+    'autodesk', 'dassault', 'cisco', 'oracle', 'vmware', 'sap', 'workday',
+    'godaddy', 'agoda', 'expedia', 'devrev', 'gupshup', 'zupee', 'winzo', 'mpl',
+    'unifyapps', 'astrotalk', 'pegasystems', 'genesys', 'nice', 'fortinet',
+    'checkpoint', 'qualys', 'cyberark', 'sailpoint', 'ansys', 'ptc', 'teradata',
+    'informatica', 'akamai', 'netapp', 'juniper', 'dell', 'hp', 'hpe',
+    'qualcomm', 'intel', 'amd', 'texas instruments', 'ti.com', 'arm', 'nxp',
+    'mediatek', 'micron', 'western digital', 'synopsys', 'cadence',
+    'tata 1mg', 'pharmeasy', 'apollo 247', 'practo', 'cult.fit', 'unacademy',
+    'physicswallah', 'zetwerk', 'moglix', 'ofbusiness', 'licious', 'apna',
+    'hackerrank', 'airtel', 'jio', 'tataneu', 'tata digital', 'walmart', 'target',
+    'tesco', 'lowe\'s',
+    'honeywell', '3m', 'mmm.com', 'siemens', 'bosch', 'schneider', 'abb',
+    'rockwell', 'volvo', 'mercedes', 'mbrdi', 'bmw', 'ford', 'gm', 'boeing',
+    'airbus', 'philips'
+]
+
+def clean_company_name(comp):
+    c = comp.strip()
+    prefixes = [
+        r'^\(India\)', r'^\(HR\)', r'^\(CHRO\)', r'^\(HR Support\)',
+        r'^Acquisition\s*', r'^Head HR\s*', r'^Director\s*', r'^VP\s*',
+        r'^Sr\.\s*', r'^Associate\s*', r'^Global\s*', r'^Group\s*', r'^& Art\s*', r'^& Consultants\s*',
+        r'^& HRElement\s*', r'^& Security\s*'
+    ]
+    for p in prefixes:
+        c = re.sub(p, '', c, flags=re.IGNORECASE).strip()
+    return c
+
+def matches_keyword(keyword, comp_clean, domain_name):
+    # Exact match on domain
+    if keyword == domain_name:
+        return True
+    # Word boundary match in cleaned company name
+    pattern = r'\b' + re.escape(keyword) + r'\b'
+    if re.search(pattern, comp_clean):
+        return True
+    return False
+
+def get_alignment_priority(company_name, email):
+    c_clean = clean_company_name(company_name).lower()
+    e_lower = email.lower()
+    domain = e_lower.split('@')[-1] if '@' in e_lower else ''
+    domain_name = domain.split('.')[0] if '.' in domain else domain
+
+    # Priority 1: Elite Tier 1 Product & AI/FinTech Giants
+    for k in PRIORITY_1_KEYWORDS:
+        if matches_keyword(k, c_clean, domain_name):
+            return 1, 'Priority 1 (Tier 1 Product / FinTech / HFT)'
+
+    # Priority 2: Tier 2 Product Unicorns & GCCs
+    for k in PRIORITY_2_KEYWORDS:
+        if matches_keyword(k, c_clean, domain_name):
+            return 2, 'Priority 2 (Tier 2 Product Unicorn / GCC / FinTech)'
+
+    # AI / Developer Product Startup domains (.ai, .io, .dev)
+    if domain.endswith('.ai') or domain.endswith('.io') or domain.endswith('.dev'):
+        return 2, 'Priority 2 (AI / Developer SaaS Startup)'
+
+    # Priority 3: Digital Engineering Studios & Specialized Consultancies
+    return 3, 'Priority 3 (Digital Engineering Studio / Specialized Tech)'
+
 def parse_email_list(file_path):
     """Parses email records from email_list.md using the 8-column format."""
     records = []
@@ -32,10 +120,8 @@ def parse_email_list(file_path):
         if not line or line.startswith("#") or line.startswith("|-") or line.startswith("| -"):
             continue
             
-        # Check if it's a markdown table line
         if line.startswith("|"):
             parts = [p.strip() for p in line.split("|")]
-            # Table format: | Empty | Company | Name | Recruiter Email | Role | LinkedIn Profile | Outreach Status | Reply Status | Follow on sent? | Empty |
             if len(parts) >= 8 and parts[1] != "Company" and not parts[1].startswith("---"):
                 company = parts[1]
                 name = parts[2]
@@ -56,259 +142,127 @@ def parse_email_list(file_path):
                         "response": reply if reply else "No",
                         "followup": followup if followup else "No"
                     })
-        else:
-            # Fallback for loose text format: Company - email1, email2
-            parts = re.split(r'\s*-\s*|\s*-\s*', line, maxsplit=1)
-            if len(parts) == 2:
-                company = parts[0].strip()
-                emails = [e.strip() for e in re.split(r'[,; ]+', parts[1]) if e.strip() and "@" in e]
-                for email in emails:
-                    records.append({
-                        "company": company,
-                        "name": "Unknown",
-                        "email": email,
-                        "role": "Recruiter",
-                        "url": "N/A",
-                        "status": "Discovered",
-                        "response": "No",
-                        "followup": "No"
-                    })
     return records
 
 def write_email_list_markdown(file_path, records):
-    """Writes the synchronized email list back to email_list.md as a clean 8-column table."""
-    # Deduplicate records by (company, email) keeping the most advanced values
-    unique_records = {}
-    for r in records:
-        key = (r["company"], r["email"])
-        if key not in unique_records:
-            unique_records[key] = r
-        else:
-            # Merge fields, keeping the most populated/advanced ones
-            if r["name"] != "Unknown" and unique_records[key]["name"] == "Unknown":
-                unique_records[key]["name"] = r["name"]
-            if r["role"] != "Recruiter" and unique_records[key]["role"] == "Recruiter":
-                unique_records[key]["role"] = r["role"]
-            if r["url"] != "N/A" and unique_records[key]["url"] == "N/A":
-                unique_records[key]["url"] = r["url"]
-            if r["status"] != "Discovered":
-                unique_records[key]["status"] = r["status"]
-            if r["response"] != "No":
-                unique_records[key]["response"] = r["response"]
-            if r.get("followup", "No") != "No":
-                unique_records[key]["followup"] = r["followup"]
-
-    sorted_records = sorted(unique_records.values(), key=lambda x: (x["company"].lower(), x["email"].lower()))
-
-    # Ensure target folder exists
-    os.makedirs(os.path.dirname(file_path), exist_ok=True)
-
+    """Formats and writes records into a clean Markdown table."""
+    sorted_records = sorted(
+        records,
+        key=lambda x: (
+            get_alignment_priority(x["company"], x["email"])[0],
+            clean_company_name(x["company"]).lower(),
+            x["company"].lower(),
+            x["email"].lower()
+        )
+    )
+    
     with open(file_path, "w", encoding="utf-8") as f:
         f.write("# Recruiter Outreach List\n\n")
         f.write("| Company | Name | Recruiter Email | Role | LinkedIn Profile | Outreach Status | Reply Status | Follow on sent? |\n")
         f.write("|---|---|---|---|---|---|---|---|\n")
         for r in sorted_records:
-            # Sanitize pipe symbols to avoid breaking markdown tables
-            company = str(r['company']).replace('|', '/')
-            name = str(r['name']).replace('|', '/')
-            email = str(r['email']).replace('|', '/')
-            role = str(r['role']).replace('|', '/')
-            url = str(r['url']).replace('|', '/')
-            status = str(r['status']).replace('|', '/')
-            response = str(r['response']).replace('|', '/')
-            followup = str(r.get('followup', 'No')).replace('|', '/')
-            f.write(f"| {company} | {name} | {email} | {role} | {url} | {status} | {response} | {followup} |\n")
-            
+            f.write(f"| {r['company']} | {r['name']} | {r['email']} | {r['role']} | {r['url']} | {r['status']} | {r['response']} | {r.get('followup', 'No')} |\n")
     print(f"Formatted and updated local '{file_path}' with latest sheet statuses.")
 
 def main():
     creds = None
     if os.path.exists(TOKEN_FILE):
-        try:
-            creds = Credentials.from_authorized_user_file(TOKEN_FILE, SCOPES)
-        except Exception:
-            pass
-
+        creds = Credentials.from_authorized_user_file(TOKEN_FILE, SCOPES)
     if not creds or not creds.valid:
         if creds and creds.expired and creds.refresh_token:
-            try:
-                creds.refresh(Request())
-            except Exception:
-                creds = None
-        
-        if not creds:
+            creds.refresh(Request())
+        else:
+            if not os.path.exists(CREDENTIALS_FILE):
+                print(f"Credentials file '{CREDENTIALS_FILE}' not found. Exiting.")
+                return
             flow = InstalledAppFlow.from_client_secrets_file(CREDENTIALS_FILE, SCOPES)
-            creds = flow.run_local_server(port=0, open_browser=True)
-            
+            creds = flow.run_local_server(port=0)
         with open(TOKEN_FILE, 'w') as token:
             token.write(creds.to_json())
 
-    service = build('sheets', 'v4', credentials=creds)
-    sheet_service = service.spreadsheets()
+    sheet_service = build('sheets', 'v4', credentials=creds).spreadsheets()
 
-    # --- Part 1: Sync Job Listings to Sheet1 ---
-    sheet_name = 'Sheet1'
-    try:
-        result = sheet_service.values().get(
-            spreadsheetId=SPREADSHEET_ID,
-            range=f"'{sheet_name}'!A:K"
-        ).execute()
-    except Exception as e:
-        print(f"Sheet1 fetch failed: {e}. Fetching first sheet name...")
-        spreadsheet_info = sheet_service.get(spreadsheetId=SPREADSHEET_ID).execute()
-        sheet_name = spreadsheet_info['sheets'][0]['properties']['title']
-        result = sheet_service.values().get(
-            spreadsheetId=SPREADSHEET_ID,
-            range=f"'{sheet_name}'!A:K"
-        ).execute()
+    # Get metadata
+    sheet_metadata = sheet_service.get(spreadsheetId=SPREADSHEET_ID).execute()
+    sheets = sheet_metadata.get('sheets', '')
+    sheet_names = [s['properties']['title'] for s in sheets]
 
-    rows = result.get('values', [])
-    headers = ["Job ID", "Company", "Job Title", "Location", "Salary (Est)", "WLB", "ATS Score", "Date Posted", "Date Discovered", "Status", "LinkedIn Link"]
-
-    if not rows:
-        body = {'values': [headers]}
+    # --- Sync Jobs Tab ---
+    jobs_sheet_name = 'Jobs'
+    if jobs_sheet_name not in sheet_names:
+        sheet_service.batchUpdate(spreadsheetId=SPREADSHEET_ID, body={
+            'requests': [{'addSheet': {'properties': {'title': jobs_sheet_name}}}]
+        }).execute()
+        headers = ["Title", "Company", "Location", "Source", "Date Posted", "Link", "Match Score"]
         sheet_service.values().update(
-            spreadsheetId=SPREADSHEET_ID,
-            range=f"'{sheet_name}'!A1",
-            valueInputOption='USER_ENTERED',
-            body=body
+            spreadsheetId=SPREADSHEET_ID, range=f"'{jobs_sheet_name}'!A1:G1",
+            valueInputOption='RAW', body={'values': [headers]}
         ).execute()
-        rows = [headers]
-        print(f"Initialized headers in sheet '{sheet_name}'.")
-
-    existing_job_ids = set()
-    for row in rows[1:]:
-        if len(row) > 0:
-            existing_job_ids.add(row[0].strip())
 
     if os.path.exists(JOBS_CSV):
-        new_rows = []
-        current_date = datetime.now().strftime("%Y-%m-%d")
-
-        with open(JOBS_CSV, "r", encoding="utf-8") as f:
-            reader = csv.DictReader(f)
-            for row in reader:
-                link = row.get("LinkedIn Link", "")
-                job_id = None
-                if "view/" in link:
-                    job_id = link.split("view/")[-1].split("?")[0].strip()
-                if not job_id:
-                    job_id = str(hash(row.get("Company", "") + row.get("Job Title", "")))
-
-                if job_id not in existing_job_ids:
-                    new_rows.append([
-                        job_id,
-                        row.get("Company", ""),
-                        row.get("Job Title", ""),
-                        row.get("Location", ""),
-                        row.get("Salary (Actual/Estimated)", ""),
-                        row.get("Work-Life Balance Rating", ""),
-                        row.get("ATS Score", ""),
-                        row.get("Date Posted", ""),
-                        current_date,
-                        "Not Applied",
-                        link
-                    ])
-
-        if new_rows:
-            body = {'values': new_rows}
-            sheet_service.values().append(
-                spreadsheetId=SPREADSHEET_ID,
-                range=f"'{sheet_name}'!A:K",
-                valueInputOption='USER_ENTERED',
-                insertDataOption='INSERT_ROWS',
-                body=body
-            ).execute()
-            print(f"Appended {len(new_rows)} new job listings to Google Sheet '{sheet_name}'.")
-        else:
-            print("No new job listings to add.")
+        with open(JOBS_CSV, 'r', encoding='utf-8') as f:
+            reader = csv.reader(f)
+            job_rows = list(reader)
+        if job_rows:
+            header_row = job_rows[0]
+            data_rows = job_rows[1:]
+            unique_rows = []
+            seen = set()
+            for r in data_rows:
+                key = (r[0], r[1])
+                if key not in seen:
+                    seen.add(key)
+                    unique_rows.append(r)
+            sheet_service.values().clear(spreadsheetId=SPREADSHEET_ID, range=f"'{jobs_sheet_name}'!A2:G").execute()
+            if unique_rows:
+                sheet_service.values().update(
+                    spreadsheetId=SPREADSHEET_ID, range=f"'{jobs_sheet_name}'!A2:G{len(unique_rows)+1}",
+                    valueInputOption='RAW', body={'values': unique_rows}
+                ).execute()
+                print(f"Successfully synced {len(unique_rows)} unique jobs to Google Sheet '{jobs_sheet_name}'.")
     else:
         print(f"Jobs CSV not found at {JOBS_CSV}, skipping jobs sync.")
 
-    # --- Part 2: Sync Recruiter Emails to 'Recruiters' tab ---
+    # --- Sync Recruiters Tab ---
     rec_sheet_name = 'Recruiters'
-    spreadsheet_info = sheet_service.get(spreadsheetId=SPREADSHEET_ID).execute()
-    existing_sheets = [s['properties']['title'] for s in spreadsheet_info['sheets']]
-    
-    if rec_sheet_name not in existing_sheets:
-        print(f"Creating new sheet tab '{rec_sheet_name}'...")
-        batch_update_request_body = {
-            'requests': [{
-                'addSheet': {
-                    'properties': {
-                        'title': rec_sheet_name
-                    }
-                }
-            }]
-        }
-        sheet_service.batchUpdate(
-            spreadsheetId=SPREADSHEET_ID,
-            body=batch_update_request_body
-        ).execute()
-
-    # Fetch recruiter rows from sheet (8 columns now: A:H)
-    result_rec = sheet_service.values().get(
-        spreadsheetId=SPREADSHEET_ID,
-        range=f"'{rec_sheet_name}'!A:H"
-    ).execute()
-    
-    rec_rows = result_rec.get('values', [])
-    rec_headers = ["Company", "Name", "Email", "Role", "LinkedIn Profile", "Status", "Reply Status", "Follow on sent?"]
-    
-    # Initialize sheet headers if empty or outdated (we overwrite header if columns != 8)
-    if not rec_rows or len(rec_rows[0]) != 8:
-        body = {'values': [rec_headers]}
+    if rec_sheet_name not in sheet_names:
+        sheet_service.batchUpdate(spreadsheetId=SPREADSHEET_ID, body={
+            'requests': [{'addSheet': {'properties': {'title': rec_sheet_name}}}]
+        }).execute()
+        headers = ["Company", "Name", "Recruiter Email", "Role", "LinkedIn Profile", "Outreach Status", "Reply Status", "Follow on sent?"]
         sheet_service.values().update(
-            spreadsheetId=SPREADSHEET_ID,
-            range=f"'{rec_sheet_name}'!A1",
-            valueInputOption='USER_ENTERED',
-            body=body
+            spreadsheetId=SPREADSHEET_ID, range=f"'{rec_sheet_name}'!A1:H1",
+            valueInputOption='RAW', body={'values': [headers]}
         ).execute()
-        rec_rows = [rec_headers]
-        print(f"Initialized/Updated 8-column headers in sheet '{rec_sheet_name}'.")
- 
-    # Map sheet emails to their metadata
+
+    local_contacts = parse_email_list(EMAIL_LIST_MD)
+    print(f"Parsed {len(local_contacts)} local email contacts from '{EMAIL_LIST_MD}'.")
+
+    result = sheet_service.values().get(spreadsheetId=SPREADSHEET_ID, range=f"'{rec_sheet_name}'!A:H").execute()
+    rows = result.get('values', [])
     sheet_data = {}
-    for row in rec_rows[1:]:
-        if len(row) >= 3:
-            company = row[0].strip()
-            name = row[1].strip()
-            email = row[2].strip()
-            role = row[3].strip() if len(row) > 3 else "Recruiter"
-            url = row[4].strip() if len(row) > 4 else "N/A"
-            status = row[5].strip() if len(row) > 5 else "Discovered"
-            response = row[6].strip() if len(row) > 6 else "No"
-            followup = row[7].strip() if len(row) > 7 else "No"
-            sheet_data[(company.lower(), email.lower())] = {
-                "company": company,
-                "name": name if name else "Unknown",
-                "email": email,
-                "role": role if role else "Recruiter",
-                "url": url if url else "N/A",
-                "status": status if status else "Discovered",
-                "response": response if response else "No",
-                "followup": followup if followup else "No"
-            }
+    if len(rows) > 1:
+        for r in rows[1:]:
+            if len(r) >= 3 and r[2].strip():
+                email_key = r[2].strip().lower()
+                company_key = r[0].strip().lower() if len(r) > 0 else ""
+                key = (company_key, email_key)
+                sheet_data[key] = {
+                    "company": r[0].strip() if len(r) > 0 else "",
+                    "name": r[1].strip() if len(r) > 1 else "",
+                    "email": r[2].strip(),
+                    "role": r[3].strip() if len(r) > 3 else "",
+                    "url": r[4].strip() if len(r) > 4 else "",
+                    "status": r[5].strip() if len(r) > 5 else "Discovered",
+                    "response": r[6].strip() if len(r) > 6 else "No",
+                    "followup": r[7].strip() if len(r) > 7 else "No"
+                }
 
-    # Load local records
-    local_records = parse_email_list(EMAIL_LIST_MD)
-    print(f"Parsed {len(local_records)} local email contacts from '{EMAIL_LIST_MD}'.")
-
-    # Merge records
     all_records_map = {}
-    for r in local_records:
-        key = (r["company"].lower(), r["email"].lower())
-        all_records_map[key] = {
-            "company": r["company"],
-            "name": r["name"],
-            "email": r["email"],
-            "role": r["role"],
-            "url": r["url"],
-            "status": r["status"],
-            "response": r["response"],
-            "followup": r.get("followup", "No")
-        }
-        
+    for c in local_contacts:
+        key = (c["company"].strip().lower(), c["email"].strip().lower())
+        all_records_map[key] = c
+
     for key, val in sheet_data.items():
         if key not in all_records_map:
             all_records_map[key] = {
@@ -322,22 +276,13 @@ def main():
                 "followup": val["followup"]
             }
         else:
-            # Merge details
-            if val["name"] != "Unknown" and all_records_map[key]["name"] == "Unknown":
-                all_records_map[key]["name"] = val["name"]
-            if val["role"] != "Recruiter" and all_records_map[key]["role"] == "Recruiter":
-                all_records_map[key]["role"] = val["role"]
-            if val["url"] != "N/A" and all_records_map[key]["url"] == "N/A":
-                all_records_map[key]["url"] = val["url"]
-                
-            # Keep the more advanced status between local and sheet
-            local_status = all_records_map[key]["status"]
-            sheet_status = val["status"]
+            sheet_status = val["status"].strip()
+            local_status = all_records_map[key]["status"].strip()
             
-            if "outdated" in local_status.lower() or "bounce" in local_status.lower():
-                all_records_map[key]["status"] = local_status
-            elif "outdated" in sheet_status.lower() or "bounce" in sheet_status.lower():
+            if "outdated" in sheet_status.lower() or "bounce" in sheet_status.lower():
                 all_records_map[key]["status"] = sheet_status
+            elif "outdated" in local_status.lower() or "bounce" in local_status.lower():
+                all_records_map[key]["status"] = local_status
             elif "sent" in sheet_status.lower() or "got" in sheet_status.lower():
                 all_records_map[key]["status"] = sheet_status
             elif "sent" in local_status.lower() or "got" in local_status.lower():
@@ -345,24 +290,28 @@ def main():
             else:
                 all_records_map[key]["status"] = sheet_status
                 
-            # Prioritize response if either is marked Yes
             if val["response"].lower() == "yes" or all_records_map[key]["response"].lower() == "yes":
                 all_records_map[key]["response"] = "Yes"
                 
-            # Prioritize followup if either is marked Yes
             if val["followup"].lower() == "yes" or all_records_map[key].get("followup", "No").lower() == "yes":
                 all_records_map[key]["followup"] = "Yes"
 
-    sorted_records = sorted(all_records_map.values(), key=lambda x: (x["company"].lower(), x["email"].lower()))
+    sorted_records = sorted(
+        all_records_map.values(),
+        key=lambda x: (
+            get_alignment_priority(x["company"], x["email"])[0],
+            clean_company_name(x["company"]).lower(),
+            x["company"].lower(),
+            x["email"].lower()
+        )
+    )
 
-    # Clear existing sheet values under headers (full columns)
     print("Clearing old rows from Google Sheet...")
     sheet_service.values().clear(
         spreadsheetId=SPREADSHEET_ID,
         range=f"'{rec_sheet_name}'!A2:H"
     ).execute()
 
-    # Write clean merged records
     sheet_rows = []
     for r in sorted_records:
         sheet_rows.append([
@@ -380,13 +329,12 @@ def main():
         body = {'values': sheet_rows}
         sheet_service.values().update(
             spreadsheetId=SPREADSHEET_ID,
-            range=f"'{rec_sheet_name}'!A2",
-            valueInputOption='USER_ENTERED',
+            range=f"'{rec_sheet_name}'!A2:H{len(sheet_rows)+1}",
+            valueInputOption='RAW',
             body=body
         ).execute()
         print(f"Successfully synced {len(sheet_rows)} recruiter rows to Google Sheet '{rec_sheet_name}'.")
 
-    # Write back clean structured list locally
     write_email_list_markdown(EMAIL_LIST_MD, sorted_records)
 
 if __name__ == '__main__':

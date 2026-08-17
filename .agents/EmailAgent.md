@@ -44,10 +44,10 @@ You must follow these rules strictly when managing recruiter lists and executing
 
 ---
 
-## 4. Thoughtworks Protection (Strict Safe-list)
+## 4. Thoughtworks & Caterpillar Protection (Strict Safe-list)
 
-*   **NEVER** send emails or add recruiters associated with **Thoughtworks** to any outreach lists.
-*   If a recruiter's company name or email domain contains the string `thoughtworks` (case-insensitive), immediately skip and exclude them from outreach.
+*   **NEVER** send emails or add recruiters associated with **Thoughtworks** (Employer) or **Caterpillar** (Client) to any outreach lists.
+*   If a recruiter's company name or email domain contains the string `thoughtworks`, `caterpillar`, or `cat.com` (case-insensitive), immediately skip and exclude them from all outreach and database lists.
 
 ---
 
